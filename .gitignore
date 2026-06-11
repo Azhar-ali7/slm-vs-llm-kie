@@ -1,0 +1,6 @@
+# macOS resource forks / metadata (common on USB/exFAT volumes)
+._*
+.DS_Store
+.Spotlight-V100
+.Trashes
+.fseventsd
