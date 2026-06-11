@@ -1,0 +1,151 @@
+# =============================================================================
+# SLM vs LLM for Key Information Extraction — single source of truth.
+# No magic constants in code: everything the runner needs lives here.
+# =============================================================================
+
+seed: 42
+
+paths:
+  data_raw: data/raw
+  data_processed: data/processed
+  results: results
+  runs_jsonl: results/runs.jsonl
+  summary_csv: results/summary.csv
+  test_set: results/test_set_20.json
+  report_md: results/REPORT.md
+  plots_dir: results
+  report_dir: report
+
+# ----------------------------------------------------------------------------
+# Datasets — pluggable. Add a loader in src/data/loaders.py + an entry here.
+# ----------------------------------------------------------------------------
+datasets:
+  sroie:
+    name: sroie
+    schema: config/schemas/sroie.json
+    raw_dir: data/raw/sroie
+    complexity: simple        # 4 fields, receipts
+  kleister_charity:
+    name: kleister_charity
+    schema: config/schemas/kleister.json
+    raw_dir: data/raw/kleister_charity
+    complexity: complex       # 8 fields, financial reports
+
+# 20-doc reproducible test set: how many from each dataset (fixed by seed).
+test_set:
+  total: 20
+  per_dataset:
+    sroie: 10
+    kleister_charity: 10
+
+# ----------------------------------------------------------------------------
+# Conditions (experiment grid)
+# ----------------------------------------------------------------------------
+conditions:
+  shot_modes: [zero_shot, few_shot]
+  input_variants: [lines_only, lines_plus_kv]
+  few_shot_k: 2            # examples drawn from TRAIN split, never the test set
+  n_samples: 1            # repeats per cell; raise to 2 only after a clean pilot
+
+# ----------------------------------------------------------------------------
+# Models — locked set. type: local (Ollama, free) | api (Azure, billed).
+# Ordered smallest -> largest so an 8GB OOM on a big model never blocks the
+# small-model results already written. params_b is used for the F1-vs-size plot.
+# ----------------------------------------------------------------------------
+models:
+  - id: smollm2-360m
+    type: local
+    tag: smollm2:360m
+    params_b: 0.36
+  - id: qwen2.5-0.5b
+    type: local
+    tag: qwen2.5:0.5b
+    params_b: 0.5
+  - id: llama3.2-1b
+    type: local
+    tag: llama3.2:1b
+    params_b: 1.0
+  - id: gemma2-2b
+    type: local
+    tag: gemma2:2b
+    params_b: 2.0
+  - id: phi4-mini
+    type: local
+    tag: phi4-mini
+    params_b: 3.8
+    large: true             # tight on 8GB — skipped by --skip-large
+  - id: mistral-7b
+    type: local
+    tag: mistral
+    params_b: 7.0
+    large: true             # ~5GB: will swap on 8GB. opt-in / run last
+  - id: frontier-llm
+    type: api
+    azure_model: frontier-llm     # -> api.azure.models.frontier-llm
+    params_b: null                # closed model; unknown size (plotted separately)
+  - id: large-open-llm
+    type: api
+    azure_model: large-open-llm
+    params_b: 70.0                 # nominal, for the size axis
+
+# ----------------------------------------------------------------------------
+# Local model runtime (Ollama on M1 / 8GB unified memory)
+# ----------------------------------------------------------------------------
+ollama:
+  host: http://localhost:11434
+  temperature: 0.0
+  num_predict: 512          # cap output tokens
+  seed: 42
+  keep_alive: 0             # unload model immediately after each call (free RAM)
+  request_timeout_s: 600    # big models on 8GB can be slow; be generous
+  mem_sample_interval_s: 0.25   # how often to poll ollama-server RSS during a call
+
+# ----------------------------------------------------------------------------
+# API models — Azure OpenAI
+# ----------------------------------------------------------------------------
+api:
+  provider: azure_openai    # azure_openai | anthropic | openai
+  azure:
+    endpoint_env: AZURE_OPENAI_ENDPOINT
+    api_key_env: AZURE_OPENAI_API_KEY
+    api_version: "2024-10-21"
+    temperature: 0.0
+    max_tokens: 512
+    request_timeout_s: 60
+    models:
+      # deployment = your Azure deployment name. Prices are USD per 1M tokens.
+      # Use a GPT-4o/4.1 tier for frontier, a mini tier for the second slot.
+      frontier-llm:
+        deployment: "<your-gpt-4o-deployment>"
+        price_in: 2.50
+        price_out: 10.00
+      large-open-llm:
+        deployment: "<your-gpt-4o-mini-deployment>"
+        price_in: 0.15
+        price_out: 0.60
+
+# Cost table is interpreted as USD per 1,000,000 tokens.
+prices_per_1m_tokens: true
+
+# ----------------------------------------------------------------------------
+# Run controls
+# ----------------------------------------------------------------------------
+run:
+  pilot_docs: 3
+  pilot_models: [smollm2-360m, frontier-llm]
+  retry_attempts: 3
+  retry_backoff_s: 2
+
+# ----------------------------------------------------------------------------
+# Report metadata (BITS Mid-Sem .docx)
+# ----------------------------------------------------------------------------
+report:
+  title: "SLM vs LLM for Key Information Extraction from Financial Documents"
+  course_code: "AIMLCZG628T"
+  degree_programme: "M.Tech (AI & ML)"
+  student_name: "Azhar Ali"
+  student_id: "2024AA05791"
+  supervisor_name: "(Insert Supervisor Name)"
+  organization: "(Insert Organization Name, Location)"
+  institute: "BIRLA INSTITUTE OF TECHNOLOGY & SCIENCE, PILANI (RAJASTHAN)"
+  month_year: "(Insert Month and Year)"

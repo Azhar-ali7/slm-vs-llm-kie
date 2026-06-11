@@ -1,0 +1,10 @@
+{
+  "dataset": "sroie",
+  "description": "SROIE receipts — 4 fields (simple).",
+  "fields": [
+    {"name": "company",  "type": "string",   "required": true},
+    {"name": "date",     "type": "date",     "required": true},
+    {"name": "address",  "type": "string",   "required": true},
+    {"name": "total",    "type": "currency", "required": true}
+  ]
+}

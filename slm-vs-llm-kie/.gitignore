@@ -1,0 +1,34 @@
+# Secrets — never commit API keys
+.env
+*.env
+!.env.example
+
+# Data & results (large / regenerable)
+data/raw/
+data/processed/
+results/runs.jsonl
+results/summary.csv
+results/*.png
+results/REPORT.md
+
+# Generated report artifacts (keep the directory, ignore outputs)
+report/*.docx
+report/*.pdf
+report/figures/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
