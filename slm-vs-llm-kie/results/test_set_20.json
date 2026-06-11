@@ -1,0 +1,50 @@
+{
+  "seed": 42,
+  "synthetic": true,
+  "datasets_used": [
+    "sample"
+  ],
+  "count": 10,
+  "doc_ids": [
+    {
+      "dataset": "sample",
+      "doc_id": "sample_receipt_03"
+    },
+    {
+      "dataset": "sample",
+      "doc_id": "sample_receipt_01"
+    },
+    {
+      "dataset": "sample",
+      "doc_id": "sample_receipt_02"
+    },
+    {
+      "dataset": "sample",
+      "doc_id": "sample_receipt_04"
+    },
+    {
+      "dataset": "sample",
+      "doc_id": "sample_receipt_00"
+    },
+    {
+      "dataset": "sample",
+      "doc_id": "sample_receipt_05"
+    },
+    {
+      "dataset": "sample",
+      "doc_id": "sample_charity_03"
+    },
+    {
+      "dataset": "sample",
+      "doc_id": "sample_charity_02"
+    },
+    {
+      "dataset": "sample",
+      "doc_id": "sample_charity_00"
+    },
+    {
+      "dataset": "sample",
+      "doc_id": "sample_charity_01"
+    }
+  ]
+}
