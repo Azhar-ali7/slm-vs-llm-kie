@@ -132,7 +132,20 @@ def from_dataset_record(record: dict[str, Any]) -> dict[str, Any]:
           "tables": [[[cell, ...], ...], ...],           # optional
         }
     bbox is [left, top, right, bottom].
+
+    Text-only records (no `words`, but a precomputed `lines` list) are supported
+    for datasets whose OCR ships as flat text without coordinates (e.g.
+    Kleister-Charity's in.tsv). Such records are assembled directly from `lines`.
     """
+    if not record.get("words") and record.get("lines") is not None:
+        return {
+            "doc_id": str(record["doc_id"]),
+            "page": int(record.get("page", 1)),
+            "lines": [str(ln).strip() for ln in record["lines"] if str(ln).strip()],
+            "key_values": _clean_kv(record.get("key_values")),
+            "tables": _clean_tables(record.get("tables")),
+        }
+
     words: list[dict[str, Any]] = []
     for w in record.get("words", []):
         x0, y0, x1, y1 = w["bbox"]

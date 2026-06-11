@@ -56,13 +56,26 @@ Set your deployment names in `config/config.yaml` under `api.azure.models`
 **Budget:** 6 local models are free; only these two Azure deployments are billed.
 A full 20-doc run is ~$5–$12 — keep `n_samples` low and avoid `gpt-4-32k`.
 
-## 4. Data
+## 4. Data (real datasets — you download, the framework converts)
+
+Both proposal datasets are **text-only** (no images, no 12 GB PDFs). Print the
+exact download commands, run them yourself, then convert:
 
 ```bash
-python scripts/download_data.py   # prints where to obtain SROIE & Kleister-Charity
+python scripts/download_data.py        # prints the git clone / curl commands
+# ...run those commands to fetch into data/raw/<name>/_src/ ...
+python scripts/convert_data.py         # -> data/raw/<name>/{train,test}.jsonl
+rm -f results/test_set_20.json         # reselect the 20-doc set on real data
 ```
 
-Place raw files under `data/raw/<name>/`. The script does not scrape.
+- **SROIE** (receipts, 4 fields): sparse-clone `zzzDavid/ICDAR-2019-SROIE`
+  (box+key only) → seeded train/test split.
+- **Kleister-Charity** (charity reports, 8 fields): four raw blobs
+  (`train`/`dev-0` × `in.tsv.xz`+`expected.tsv`) — OCR text + gold, **no
+  git-annex**. dev-0 becomes the test split. Long reports are line-capped
+  (`conditions.max_input_lines`) to stay cheap on Azure and fit 8 GB locally.
+
+Until real data is present, everything runs on the synthetic `sample` dataset.
 
 ## 5. Run
 

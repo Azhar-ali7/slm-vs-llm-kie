@@ -30,9 +30,16 @@ def field_spec(schema: dict[str, Any]) -> str:
     return "\n".join(rows)
 
 
-def render_input_block(simple_json: dict[str, Any], input_variant: str) -> str:
-    """Render the document text fed to the model for a given input variant."""
+def render_input_block(simple_json: dict[str, Any], input_variant: str,
+                       max_lines: int | None = None) -> str:
+    """Render the document text fed to the model for a given input variant.
+
+    `max_lines` caps the number of document lines included (bounds context and
+    cost for long documents); None means no cap.
+    """
     lines = simple_json.get("lines", [])
+    if max_lines is not None and len(lines) > max_lines:
+        lines = lines[:max_lines]
     block = "LINES:\n" + ("\n".join(lines) if lines else "(none)")
     if input_variant == "lines_plus_kv":
         kv = simple_json.get("key_values", {})
@@ -47,9 +54,10 @@ def _example_gold(record: dict[str, Any], schema: dict[str, Any]) -> dict[str, A
     return {f: gold.get(f) for f in fields}
 
 
-def _build_example(record: dict[str, Any], schema: dict[str, Any], input_variant: str) -> str:
+def _build_example(record: dict[str, Any], schema: dict[str, Any], input_variant: str,
+                   max_lines: int | None = None) -> str:
     sj = from_dataset_record(record)
-    inp = render_input_block(sj, input_variant)
+    inp = render_input_block(sj, input_variant, max_lines=max_lines)
     out = json.dumps(_example_gold(record, schema), ensure_ascii=False)
     return f"{inp}\n\nOutput:\n{out}"
 
@@ -60,18 +68,20 @@ def build_prompt(
     shot_mode: str = "zero_shot",
     input_variant: str = "lines_only",
     examples: list[dict[str, Any]] | None = None,
+    max_lines: int | None = None,
 ) -> str:
     """Assemble the full prompt string.
 
     `examples` are TRAIN-split records (used only when shot_mode == 'few_shot').
+    `max_lines` caps document lines (long-document context/cost control).
     """
     instruction = _load_template("instruction.txt").format(field_spec=field_spec(schema))
     parts = [instruction]
 
     if shot_mode == "few_shot" and examples:
         for i, ex in enumerate(examples, 1):
-            parts.append(f"### Example {i}\n{_build_example(ex, schema, input_variant)}")
+            parts.append(f"### Example {i}\n{_build_example(ex, schema, input_variant, max_lines)}")
 
-    document = render_input_block(simple_json, input_variant)
+    document = render_input_block(simple_json, input_variant, max_lines=max_lines)
     parts.append(f"### Document\n{document}\n\nOutput:")
     return "\n\n".join(parts)

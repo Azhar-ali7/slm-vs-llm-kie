@@ -21,20 +21,25 @@ from src.config import load_config, resolve_path  # noqa: E402
 
 INSTRUCTIONS = {
     "sroie": (
-        "SROIE (ICDAR 2019, Task 3 — receipts)\n"
-        "  Source: https://rrc.cvc.uab.es/?ch=13  (register, download Task 1/3 data)\n"
-        "  Each receipt ships an OCR file (coordinates + text) and an entities JSON\n"
-        "  with {company, date, address, total}. Convert each receipt to one JSON\n"
-        "  line: words[] from the OCR boxes, gold{} from the entities file.\n"
-        "  Write train -> data/raw/sroie/train.jsonl, test -> data/raw/sroie/test.jsonl\n"
+        "SROIE (ICDAR-2019, receipts — company/date/address/total). Text-only;\n"
+        "  no registration needed. Sparse-clone just the box+key annotations:\n\n"
+        "    git clone --filter=blob:none --sparse --depth 1 \\\n"
+        "        https://github.com/zzzDavid/ICDAR-2019-SROIE \\\n"
+        "        data/raw/sroie/_src\n"
+        "    cd data/raw/sroie/_src && git sparse-checkout set data/box data/key && cd -\n\n"
+        "  (Plain `git clone <repo> data/raw/sroie/_src` also works but pulls images.)\n"
+        "  Then: python scripts/convert_data.py  ->  data/raw/sroie/{train,test}.jsonl\n"
     ),
     "kleister_charity": (
-        "Kleister-Charity (financial reports)\n"
-        "  Source: https://github.com/applicaai/kleister-charity\n"
-        "  Provides OCR (words+boxes) and gold for 8 fields incl. income/spending,\n"
-        "  charity number, report date, and address__* parts.\n"
-        "  Convert to the same JSONL shape ->\n"
-        "  data/raw/kleister_charity/train.jsonl and .../test.jsonl\n"
+        "Kleister-Charity (UK charity annual reports — 8 fields). Text-only OCR;\n"
+        "  NO git-annex / NO 12GB PDFs needed. Download four small blobs:\n\n"
+        "    mkdir -p data/raw/kleister_charity/_src/train data/raw/kleister_charity/_src/dev-0\n"
+        "    base=https://raw.githubusercontent.com/applicaai/kleister-charity/master\n"
+        "    for f in train/in.tsv.xz train/expected.tsv dev-0/in.tsv.xz dev-0/expected.tsv; do\n"
+        "      curl -fSL \"$base/$f\" -o \"data/raw/kleister_charity/_src/$f\"\n"
+        "    done\n\n"
+        "  Then: python scripts/convert_data.py  ->  data/raw/kleister_charity/{train,test}.jsonl\n"
+        "  (dev-0 becomes the test split; test-A gold is withheld upstream.)\n"
     ),
 }
 
@@ -51,8 +56,12 @@ def main() -> None:
         print(f"\n[{status}] {name}  ->  {raw_dir}")
         print(text)
     print("-" * 72)
-    print("Tip: everything runs on the synthetic 'sample' dataset until you add "
-          "real data.\nTry: python scripts/run_eval.py --pilot")
+    print("After downloading, build the JSONL and refresh the test set:")
+    print("  python scripts/convert_data.py")
+    print("  rm -f results/test_set_20.json   # reselect 20 real docs")
+    print("  python scripts/run_eval.py --pilot")
+    print("\nTip: until real data is present, everything runs on the synthetic "
+          "'sample' dataset.")
 
 
 if __name__ == "__main__":

@@ -149,7 +149,8 @@ def live(cfg: dict, doc_id: str | None, models: list[str] | None, local_only: bo
     _show_document(record, simple_json)
 
     from src.prompts.builder import build_prompt
-    prompt = build_prompt(schema, simple_json, "zero_shot", "lines_plus_kv")
+    prompt = build_prompt(schema, simple_json, "zero_shot", "lines_plus_kv",
+                          max_lines=cfg["conditions"].get("max_input_lines"))
     for runner in runners:
         with console.status(f"Running {runner.model_id}…"):
             result = runner.run(prompt)

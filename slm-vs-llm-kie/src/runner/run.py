@@ -68,6 +68,7 @@ def run_eval(
     variants = list(cfg["conditions"]["input_variants"])
     n_samples = int(cfg["conditions"]["n_samples"])
     few_shot_k = int(cfg["conditions"]["few_shot_k"])
+    max_lines = cfg["conditions"].get("max_input_lines")
 
     if pilot:
         records = records[: cfg["run"]["pilot_docs"]]
@@ -117,7 +118,8 @@ def run_eval(
                         row_key = (rec["dataset"], rec["doc_id"], runner.model_id, shot, variant, s)
                         if row_key in done:
                             continue
-                        prompt = build_prompt(schema, simple_json, shot, variant, examples)
+                        prompt = build_prompt(schema, simple_json, shot, variant,
+                                              examples, max_lines=max_lines)
                         result = _run_with_retry(
                             runner, prompt,
                             attempts=cfg["run"]["retry_attempts"],

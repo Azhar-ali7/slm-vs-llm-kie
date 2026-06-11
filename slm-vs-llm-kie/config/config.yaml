@@ -46,6 +46,8 @@ conditions:
   input_variants: [lines_only, lines_plus_kv]
   few_shot_k: 2            # examples drawn from TRAIN split, never the test set
   n_samples: 1            # repeats per cell; raise to 2 only after a clean pilot
+  max_input_lines: 120    # cap document lines in the prompt (long Kleister reports
+                          # -> bounded context for small local models & Azure cost)
 
 # ----------------------------------------------------------------------------
 # Models — locked set. type: local (Ollama, free) | api (Azure, billed).
