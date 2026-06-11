@@ -78,6 +78,7 @@ def _receipt_record(idx: int, company: str, date: str, address: str, total: str,
     return {
         "doc_id": f"sample_receipt_{idx:02d}",
         "dataset": "sample",
+        "schema_name": "sroie",
         "split": split,
         "page": 1,
         "words": words,
@@ -109,6 +110,7 @@ def _charity_record(idx: int, name: str, number: str, rdate: str, income: str,
     return {
         "doc_id": f"sample_charity_{idx:02d}",
         "dataset": "sample",
+        "schema_name": "kleister_charity",
         "split": split,
         "page": 1,
         "words": words,
@@ -187,6 +189,7 @@ def _load_jsonl_records(path: Path, dataset: str, split: str) -> list[dict[str, 
                 continue
             rec = json.loads(line)
             rec.setdefault("dataset", dataset)
+            rec.setdefault("schema_name", dataset)
             rec.setdefault("split", split)
             rec.setdefault("page", 1)
             rec.setdefault("key_values", {})

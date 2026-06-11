@@ -1,0 +1,67 @@
+"""Build the active model runners from config.
+
+Adding a model is config-only: add an entry to `models:` (and, for an API model,
+to `api.azure.models`). The runner loop never changes.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from src.models.api_runner import AzureOpenAIRunner
+from src.models.base import ModelRunner
+from src.models.ollama_runner import OllamaRunner
+
+
+def _make_runner(cfg: dict[str, Any], model: dict[str, Any]) -> ModelRunner:
+    if model["type"] == "local":
+        return OllamaRunner(model_id=model["id"], tag=model["tag"], ollama_cfg=cfg["ollama"])
+    if model["type"] == "api":
+        provider = cfg["api"].get("provider", "azure_openai")
+        if provider != "azure_openai":
+            raise NotImplementedError(
+                f"api.provider '{provider}' not implemented; this build uses azure_openai."
+            )
+        return AzureOpenAIRunner(
+            model_id=model["id"], azure_model_key=model["azure_model"], api_cfg=cfg["api"]
+        )
+    raise ValueError(f"Unknown model type {model['type']!r} for {model['id']!r}")
+
+
+def build_runners(
+    cfg: dict[str, Any],
+    only: list[str] | None = None,
+    skip_large: bool = False,
+) -> list[ModelRunner]:
+    """Return runners in config order (smallest local -> largest -> API).
+
+    `only` restricts to specific model ids; `skip_large` drops models flagged
+    `large: true` (phi4-mini, mistral-7b) — useful on 8GB.
+    """
+    runners: list[ModelRunner] = []
+    for model in cfg["models"]:
+        if only and model["id"] not in only:
+            continue
+        if skip_large and model.get("large"):
+            continue
+        runners.append(_make_runner(cfg, model))
+    return runners
+
+
+def model_meta(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """id -> {type, params_b, large, price_in, price_out} for analysis/plots."""
+    meta: dict[str, dict[str, Any]] = {}
+    azure_models = cfg.get("api", {}).get("azure", {}).get("models", {})
+    for model in cfg["models"]:
+        entry = {
+            "type": model["type"],
+            "params_b": model.get("params_b"),
+            "large": bool(model.get("large", False)),
+            "price_in": 0.0,
+            "price_out": 0.0,
+        }
+        if model["type"] == "api":
+            am = azure_models.get(model.get("azure_model"), {})
+            entry["price_in"] = am.get("price_in", 0.0)
+            entry["price_out"] = am.get("price_out", 0.0)
+        meta[model["id"]] = entry
+    return meta

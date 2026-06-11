@@ -16,9 +16,19 @@ def align_gold(gold: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
     return {f: gold.get(f) for f in fields}
 
 
+def schema_for_record(cfg: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
+    """Pick the target schema for a record.
+
+    Real records carry schema_name == dataset. Synthetic `sample` records carry
+    schema_name 'sroie' (receipts) or 'kleister_charity' (charities).
+    """
+    name = record.get("schema_name") or record.get("dataset")
+    if name not in cfg["datasets"]:
+        name = "kleister_charity" if "charity_name" in record.get("gold", {}) else "sroie"
+    return load_schema(cfg, name)
+
+
 def _schema_for_dataset(cfg: dict[str, Any], dataset: str) -> dict[str, Any]:
-    # The synthetic `sample` dataset reuses sroie/kleister schemas by record shape;
-    # gold keys already match, so pick the schema whose fields the gold satisfies.
     if dataset in cfg["datasets"]:
         return load_schema(cfg, dataset)
     return load_schema(cfg, "sroie")
@@ -104,11 +114,28 @@ def load_test_records(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     return records
 
 
-def load_train_records(cfg: dict[str, Any], dataset: str, limit: int = 20) -> list[dict[str, Any]]:
-    """Train-split records for few-shot examples (never the test set)."""
-    try:
-        return load_dataset(cfg, dataset, split="train")[:limit]
-    except Exception:
-        # Synthetic sample has no separate train split; reuse sample as examples,
-        # excluding nothing here — the prompt builder guards against test leakage.
-        return load_dataset(cfg, "sample", split="train")[:limit]
+def few_shot_pool(cfg: dict[str, Any], record: dict[str, Any],
+                  exclude_doc_ids: set[str], k: int) -> list[dict[str, Any]]:
+    """Up to k few-shot examples of the same schema as `record`, never from the
+    test set (or the record itself)."""
+    name = record.get("schema_name") or record.get("dataset")
+    dataset = record.get("dataset")
+
+    # Real dataset with a train split: use it (disjoint from the test split).
+    if dataset in cfg["datasets"]:
+        try:
+            pool = [r for r in load_dataset(cfg, dataset, split="train")
+                    if r["doc_id"] not in exclude_doc_ids and r["doc_id"] != record["doc_id"]]
+            if pool:
+                return pool[:k]
+        except Exception:
+            pass
+
+    # Synthetic sample: same-schema records held out of the test set.
+    pool = [
+        r for r in load_dataset(cfg, "sample", split="train")
+        if (r.get("schema_name") == name)
+        and r["doc_id"] not in exclude_doc_ids
+        and r["doc_id"] != record["doc_id"]
+    ]
+    return pool[:k]
