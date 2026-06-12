@@ -30,6 +30,11 @@ def _make_runner(cfg: dict[str, Any], model: dict[str, Any]) -> ModelRunner:
         return FoundryRunner(
             model_id=model["id"], foundry_model_key=model["foundry_model"], api_cfg=cfg["api"]
         )
+    if mtype == "openrouter":
+        from src.models.openrouter_runner import OpenRouterRunner
+        return OpenRouterRunner(
+            model_id=model["id"], openrouter_model_key=model["openrouter_model"], api_cfg=cfg["api"]
+        )
     raise ValueError(f"Unknown model type {mtype!r} for {model['id']!r}")
 
 
@@ -58,6 +63,7 @@ def model_meta(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
     meta: dict[str, dict[str, Any]] = {}
     azure_models = cfg.get("api", {}).get("azure", {}).get("models", {})
     foundry_models = cfg.get("api", {}).get("foundry", {}).get("models", {})
+    openrouter_models = cfg.get("api", {}).get("openrouter", {}).get("models", {})
     for model in cfg["models"]:
         entry = {
             "type": model["type"],
@@ -74,5 +80,9 @@ def model_meta(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
             fm = foundry_models.get(model.get("foundry_model"), {})
             entry["price_in"] = fm.get("price_in", 0.0)
             entry["price_out"] = fm.get("price_out", 0.0)
+        elif model["type"] == "openrouter":
+            om = openrouter_models.get(model.get("openrouter_model"), {})
+            entry["price_in"] = om.get("price_in", 0.0)
+            entry["price_out"] = om.get("price_out", 0.0)
         meta[model["id"]] = entry
     return meta

@@ -1,13 +1,13 @@
 {
-  "timestamp": "2026-06-12T03:56:02.417181+00:00",
+  "timestamp": "2026-06-12T04:18:43.625142+00:00",
   "pilot": true,
   "seed": 42,
   "python": "3.12.4",
   "platform": "macOS-15.5-arm64-arm-64bit",
   "models": [
     {
-      "id": "mock-extractor",
-      "kind": "mock"
+      "id": "large-open-llm",
+      "kind": "api"
     }
   ],
   "n_docs": 3,

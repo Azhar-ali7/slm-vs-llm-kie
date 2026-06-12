@@ -71,26 +71,28 @@ models:
     type: local
     tag: gemma2:2b
     params_b: 2.0
-  # phi4-mini & mistral run on Azure AI Foundry serverless (cheap tier) so they
-  # don't have to fit in 8GB locally. Flip type:local + tag to run via Ollama.
+  # No OpenRouter credits -> only ":free" models are usable, and OpenRouter has
+  # no free Phi or Mistral-7B. So phi4-mini & mistral run LOCALLY on Ollama
+  # (laptop or a DigitalOcean droplet), and the two LARGE models use OpenRouter
+  # FREE slugs ($0, rate-limited ~50 req/day without credit).
   - id: phi4-mini
-    type: foundry
-    foundry_model: phi4-mini        # -> api.foundry.models.phi4-mini
-    tag: phi4-mini                  # used only if you switch type:local
+    type: local
+    tag: phi4-mini
     params_b: 3.8
+    large: true                       # ~3GB, tight on 8GB -> --skip-large or droplet
   - id: mistral-7b
-    type: foundry
-    foundry_model: mistral
+    type: local
     tag: mistral
     params_b: 7.0
+    large: true                       # ~5GB, will swap on 8GB -> droplet/opt-in
   - id: frontier-llm
-    type: api
-    azure_model: frontier-llm       # -> api.azure.models.frontier-llm (Azure OpenAI)
-    params_b: null                  # closed model; unknown size (plotted separately)
+    type: openrouter
+    openrouter_model: frontier-llm    # free strong model (Qwen3-Next-80B)
+    params_b: null                    # plotted separately (size unknown/closed-proxy)
   - id: large-open-llm
-    type: foundry
-    foundry_model: large-open-llm   # -> api.foundry.models.large-open-llm
-    params_b: 70.0                  # nominal, for the size axis
+    type: openrouter
+    openrouter_model: large-open-llm  # free Llama-3.3-70B
+    params_b: 70.0
 
 # ----------------------------------------------------------------------------
 # Local model runtime (Ollama on M1 / 8GB unified memory)
@@ -153,6 +155,35 @@ api:
         price_out: 0.79
       # Per-model endpoint/key override (if a deployment has its own URL+key):
       #   phi4-mini: {model: ..., endpoint_env: PHI4_ENDPOINT, api_key_env: PHI4_KEY, ...}
+
+  # --- OpenRouter (ACTIVE cloud path) -------------------------------------
+  # One OpenAI-compatible key (OPENROUTER_API_KEY) for every cloud model.
+  # CHEAP-TIER DEFAULTS verified live (USD per 1M tokens). Swap `model` for a
+  # ":free" slug (e.g. meta-llama/llama-3.3-70b-instruct:free) to run at $0 —
+  # free models have lower rate limits.
+  openrouter:
+    base_url: "https://openrouter.ai/api/v1"
+    api_key_env: OPENROUTER_API_KEY
+    temperature: 0.0
+    max_tokens: 512
+    request_timeout_s: 60
+    title: "slm-vs-llm-kie"
+    models:
+      # FREE slugs ($0) because the account has no credit. Free tier is
+      # rate-limited (~50 requests/day without >=$10 credit). To run faster or
+      # use stronger paid models, add credit and swap to paid slugs, e.g.
+      # frontier -> openai/gpt-4o-mini (0.15/0.60), large-open -> .../llama-3.3-70b-instruct (0.10/0.32).
+      frontier-llm:
+        model: "qwen/qwen3-next-80b-a3b-instruct:free"
+        price_in: 0.0
+        price_out: 0.0
+      large-open-llm:
+        model: "meta-llama/llama-3.3-70b-instruct:free"
+        price_in: 0.0
+        price_out: 0.0
+      # Paid Phi/Mistral exist but need credit; phi4-mini & mistral run on Ollama:
+      #   phi4-mini: {model: microsoft/phi-4-mini-instruct, price_in: 0.08, price_out: 0.35}
+      #   mistral:   {model: mistralai/ministral-8b-2512,   price_in: 0.15, price_out: 0.15}
 
 # Cost table is interpreted as USD per 1,000,000 tokens.
 prices_per_1m_tokens: true

@@ -7,6 +7,7 @@ before the next (8GB-friendly). Transient errors are retried with backoff.
 from __future__ import annotations
 
 import platform
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -39,12 +40,26 @@ def _is_transient(error: str) -> bool:
     return any(t in e for t in _TRANSIENT)
 
 
+_RETRY_AFTER_RE = re.compile(
+    r"retry[_-]after(?:_seconds)?['\"]?\s*[:=]\s*['\"]?(\d+(?:\.\d+)?)", re.IGNORECASE
+)
+
+
+def _retry_delay(error: str, attempt: int, backoff: float, cap: float = 90.0) -> float:
+    """Honor a provider Retry-After if present (e.g. OpenRouter free 429s),
+    otherwise exponential backoff."""
+    m = _RETRY_AFTER_RE.search(error or "")
+    if m:
+        return min(float(m.group(1)) + 1.0, cap)
+    return min(backoff * (2 ** (attempt - 1)), cap)
+
+
 def _run_with_retry(runner, prompt: str, attempts: int, backoff: float) -> RunResult:
     result = runner.run(prompt)
     for attempt in range(1, attempts):
         if not result.error or not _is_transient(result.error):
             return result
-        time.sleep(backoff * (2 ** (attempt - 1)))
+        time.sleep(_retry_delay(result.error, attempt, backoff))
         result = runner.run(prompt)
     return result
 
