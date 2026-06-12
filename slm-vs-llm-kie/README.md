@@ -97,14 +97,12 @@ python scripts/demo.py --live --doc <id>    # real local + Azure call on one doc
 
 Fallback order if anything is flaky: `--replay` → `--live --local-only` → `--live`.
 
-## 7. Report (BITS Mid-Sem format)
+## 7. Report materials (you write the report)
 
-```bash
-python scripts/make_report.py               # -> report/MidSem_Report.docx
-```
-
-Matches the institute Mid-Sem report layout; embeds the architecture/pipeline
-figures and, once a run exists, the result tables and plots.
+`make_plots.py` produces everything you need to paste into your own report:
+`results/summary.csv`, `results/REPORT.md` (tables + auto-findings), the four
+result plots, and `report/figures/` (architecture + pipeline diagrams). No
+document is auto-generated — write the report yourself.
 
 ## Tests
 
@@ -117,4 +115,4 @@ pytest -q
 See `config/config.yaml` (single source of truth) and `src/` modules:
 `data/` (preprocess, loaders, gt), `models/` (runners, registry),
 `prompts/` (builder), `eval/` (parse, metrics, efficiency),
-`runner/` (run loop), `analysis/` (aggregate, plots, report, report_doc).
+`runner/` (run loop), `analysis/` (aggregate, plots, report, report_figures).
