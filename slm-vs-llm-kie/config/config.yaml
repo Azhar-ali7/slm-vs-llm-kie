@@ -102,7 +102,8 @@ ollama:
   temperature: 0.0
   num_predict: 512          # cap output tokens
   seed: 42
-  keep_alive: 0             # unload model immediately after each call (free RAM)
+  keep_alive: "5m"          # keep model loaded across its batch (small models);
+                            # set 0 to unload after each call (safer for 7B on 8GB)
   request_timeout_s: 600    # big models on 8GB can be slow; be generous
   mem_sample_interval_s: 0.25   # how often to poll ollama-server RSS during a call
 

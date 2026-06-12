@@ -32,3 +32,4 @@ env/
 ._*
 .Spotlight-V100
 .Trashes
+results/*.log

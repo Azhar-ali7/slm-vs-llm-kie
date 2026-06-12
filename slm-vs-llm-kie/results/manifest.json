@@ -1,25 +1,40 @@
 {
-  "timestamp": "2026-06-12T04:18:43.625142+00:00",
-  "pilot": true,
+  "timestamp": "2026-06-12T04:38:42.383653+00:00",
+  "pilot": false,
   "seed": 42,
   "python": "3.12.4",
   "platform": "macOS-15.5-arm64-arm-64bit",
   "models": [
     {
-      "id": "large-open-llm",
-      "kind": "api"
+      "id": "smollm2-360m",
+      "kind": "local"
+    },
+    {
+      "id": "qwen2.5-0.5b",
+      "kind": "local"
+    },
+    {
+      "id": "llama3.2-1b",
+      "kind": "local"
+    },
+    {
+      "id": "gemma2-2b",
+      "kind": "local"
     }
   ],
-  "n_docs": 3,
+  "n_docs": 20,
   "shot_modes": [
-    "zero_shot"
+    "zero_shot",
+    "few_shot"
   ],
   "input_variants": [
-    "lines_only"
+    "lines_only",
+    "lines_plus_kv"
   ],
   "n_samples": 1,
   "api_provider": "azure_openai",
   "datasets": [
+    "kleister_charity",
     "sroie"
   ]
 }
