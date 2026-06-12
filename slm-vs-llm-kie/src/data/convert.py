@@ -56,12 +56,13 @@ def _read_gold_json(path: Path) -> dict[str, Any]:
 def sroie_records_from_dirs(box_dir: str | Path, key_dir: str | Path,
                             split: str) -> list[dict[str, Any]]:
     box_dir, key_dir = Path(box_dir), Path(key_dir)
+    box_files = sorted(list(box_dir.glob("*.csv")) + list(box_dir.glob("*.txt")))
     records = []
-    for box_file in sorted(box_dir.glob("*.txt")):
+    for box_file in box_files:
         stem = box_file.stem
-        key_file = key_dir / f"{stem}.txt"
+        key_file = key_dir / f"{stem}.json"
         if not key_file.exists():
-            key_file = key_dir / f"{stem}.json"
+            key_file = key_dir / f"{stem}.txt"
         if not key_file.exists():
             continue  # only keep labelled receipts
         words = []
@@ -135,14 +136,20 @@ def select_lines(text: str, head: int = 60, max_lines: int = 250,
     return selected
 
 
+def _decode_tsv_text(text: str) -> str:
+    """Kleister in.tsv stores newlines/tabs as the literal escapes '\\n'/'\\t'
+    (so they don't break the TSV rows). Turn them back into real whitespace."""
+    return text.replace("\\n", "\n").replace("\\t", " ").replace("\\r", " ")
+
+
 def _choose_text_column(cols: list[str]) -> str:
     """in.tsv columns: filename, keys, djvu, tesseract, textract, combined.
     Prefer the richest text column that is non-empty."""
     # indices 5 (combined), 4 (textract), 3 (tesseract), 2 (djvu)
     for idx in (5, 4, 3, 2):
         if idx < len(cols) and cols[idx].strip():
-            return cols[idx]
-    return cols[-1] if cols else ""
+            return _decode_tsv_text(cols[idx])
+    return _decode_tsv_text(cols[-1]) if cols else ""
 
 
 def kleister_records_from_tsv(in_tsv_xz: str | Path, expected_tsv: str | Path,
