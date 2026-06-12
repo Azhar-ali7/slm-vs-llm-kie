@@ -71,24 +71,26 @@ models:
     type: local
     tag: gemma2:2b
     params_b: 2.0
+  # phi4-mini & mistral run on Azure AI Foundry serverless (cheap tier) so they
+  # don't have to fit in 8GB locally. Flip type:local + tag to run via Ollama.
   - id: phi4-mini
-    type: local
-    tag: phi4-mini
+    type: foundry
+    foundry_model: phi4-mini        # -> api.foundry.models.phi4-mini
+    tag: phi4-mini                  # used only if you switch type:local
     params_b: 3.8
-    large: true             # tight on 8GB — skipped by --skip-large
   - id: mistral-7b
-    type: local
+    type: foundry
+    foundry_model: mistral
     tag: mistral
     params_b: 7.0
-    large: true             # ~5GB: will swap on 8GB. opt-in / run last
   - id: frontier-llm
     type: api
-    azure_model: frontier-llm     # -> api.azure.models.frontier-llm
-    params_b: null                # closed model; unknown size (plotted separately)
+    azure_model: frontier-llm       # -> api.azure.models.frontier-llm (Azure OpenAI)
+    params_b: null                  # closed model; unknown size (plotted separately)
   - id: large-open-llm
-    type: api
-    azure_model: large-open-llm
-    params_b: 70.0                 # nominal, for the size axis
+    type: foundry
+    foundry_model: large-open-llm   # -> api.foundry.models.large-open-llm
+    params_b: 70.0                  # nominal, for the size axis
 
 # ----------------------------------------------------------------------------
 # Local model runtime (Ollama on M1 / 8GB unified memory)
@@ -107,6 +109,8 @@ ollama:
 # ----------------------------------------------------------------------------
 api:
   provider: azure_openai    # azure_openai | anthropic | openai
+
+  # --- Azure OpenAI (GPT models only) -------------------------------------
   azure:
     endpoint_env: AZURE_OPENAI_ENDPOINT
     api_key_env: AZURE_OPENAI_API_KEY
@@ -115,16 +119,40 @@ api:
     max_tokens: 512
     request_timeout_s: 60
     models:
-      # deployment = your Azure deployment name. Prices are USD per 1M tokens.
-      # Use a GPT-4o/4.1 tier for frontier, a mini tier for the second slot.
+      # deployment = your Azure OpenAI deployment name. Prices USD per 1M tokens.
+      # CHEAP-TIER DEFAULT: frontier = gpt-4o-mini. Swap to a gpt-4o deployment
+      # (price 2.50 / 10.00) if you want a stronger frontier model.
       frontier-llm:
-        deployment: "<your-gpt-4o-deployment>"
-        price_in: 2.50
-        price_out: 10.00
-      large-open-llm:
         deployment: "<your-gpt-4o-mini-deployment>"
         price_in: 0.15
         price_out: 0.60
+
+  # --- Azure AI Foundry serverless (Phi / Mistral / Llama / …) -------------
+  # Different service from Azure OpenAI: uses an endpoint+key from a Foundry
+  # serverless deployment. Set the model names + your endpoint/key (env below).
+  # CHEAP-TIER DEFAULTS chosen (Phi-4-mini, Ministral-8B, Llama-3.3-70B).
+  foundry:
+    endpoint_env: AZURE_FOUNDRY_ENDPOINT      # e.g. https://<res>.services.ai.azure.com/models
+    api_key_env: AZURE_FOUNDRY_API_KEY
+    api_version: "2024-05-01-preview"
+    temperature: 0.0
+    max_tokens: 512
+    request_timeout_s: 60
+    models:
+      phi4-mini:
+        model: "Phi-4-mini-instruct"
+        price_in: 0.07
+        price_out: 0.23
+      mistral:                       # cheap tier — avoid "Mistral Small/Large"
+        model: "Ministral-8B"
+        price_in: 0.10
+        price_out: 0.10
+      large-open-llm:
+        model: "Llama-3.3-70B-Instruct"
+        price_in: 0.59
+        price_out: 0.79
+      # Per-model endpoint/key override (if a deployment has its own URL+key):
+      #   phi4-mini: {model: ..., endpoint_env: PHI4_ENDPOINT, api_key_env: PHI4_KEY, ...}
 
 # Cost table is interpreted as USD per 1,000,000 tokens.
 prices_per_1m_tokens: true

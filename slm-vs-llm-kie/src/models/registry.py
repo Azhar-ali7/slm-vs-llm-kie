@@ -13,9 +13,10 @@ from src.models.ollama_runner import OllamaRunner
 
 
 def _make_runner(cfg: dict[str, Any], model: dict[str, Any]) -> ModelRunner:
-    if model["type"] == "local":
+    mtype = model["type"]
+    if mtype == "local":
         return OllamaRunner(model_id=model["id"], tag=model["tag"], ollama_cfg=cfg["ollama"])
-    if model["type"] == "api":
+    if mtype == "api":
         provider = cfg["api"].get("provider", "azure_openai")
         if provider != "azure_openai":
             raise NotImplementedError(
@@ -24,7 +25,12 @@ def _make_runner(cfg: dict[str, Any], model: dict[str, Any]) -> ModelRunner:
         return AzureOpenAIRunner(
             model_id=model["id"], azure_model_key=model["azure_model"], api_cfg=cfg["api"]
         )
-    raise ValueError(f"Unknown model type {model['type']!r} for {model['id']!r}")
+    if mtype == "foundry":
+        from src.models.foundry_runner import FoundryRunner
+        return FoundryRunner(
+            model_id=model["id"], foundry_model_key=model["foundry_model"], api_cfg=cfg["api"]
+        )
+    raise ValueError(f"Unknown model type {mtype!r} for {model['id']!r}")
 
 
 def build_runners(
@@ -51,6 +57,7 @@ def model_meta(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
     """id -> {type, params_b, large, price_in, price_out} for analysis/plots."""
     meta: dict[str, dict[str, Any]] = {}
     azure_models = cfg.get("api", {}).get("azure", {}).get("models", {})
+    foundry_models = cfg.get("api", {}).get("foundry", {}).get("models", {})
     for model in cfg["models"]:
         entry = {
             "type": model["type"],
@@ -63,5 +70,9 @@ def model_meta(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
             am = azure_models.get(model.get("azure_model"), {})
             entry["price_in"] = am.get("price_in", 0.0)
             entry["price_out"] = am.get("price_out", 0.0)
+        elif model["type"] == "foundry":
+            fm = foundry_models.get(model.get("foundry_model"), {})
+            entry["price_in"] = fm.get("price_in", 0.0)
+            entry["price_out"] = fm.get("price_out", 0.0)
         meta[model["id"]] = entry
     return meta

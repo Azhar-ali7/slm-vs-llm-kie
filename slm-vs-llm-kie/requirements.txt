@@ -6,7 +6,8 @@ pandas==2.2.3
 numpy==2.1.3
 
 # Models / APIs
-openai==1.54.4          # AzureOpenAI client for the API models
+openai==1.54.4          # AzureOpenAI client (GPT models / frontier slot)
+azure-ai-inference==1.0.0b9   # Azure AI Foundry serverless (Phi/Mistral/Llama)
 tenacity==9.0.0         # retry with backoff
 tiktoken==0.8.0         # token estimate / fallback counting
 
