@@ -67,16 +67,21 @@ models:
     type: local
     tag: llama3.2:1b
     params_b: 1.0
+  - id: gemma3-1b
+    type: local
+    tag: gemma3:1b
+    params_b: 1.0
   - id: gemma2-2b
     type: local
     tag: gemma2:2b
     params_b: 2.0
-  # phi4-mini & mistral run on Azure AI Foundry serverless (no 8GB pressure).
-  # Requires AZURE_FOUNDRY_ENDPOINT + AZURE_FOUNDRY_API_KEY in .env and the
-  # models deployed in your Foundry project (see api.foundry.models below).
-  # Mid arm runs on a DigitalOcean GPU droplet via Ollama (target it with
-  # OLLAMA_HOST=http://<droplet-ip>:11434) — same constrained-decoding stack as
-  # the small models. foundry_model kept for reference if you switch back.
+  - id: gemma3-4b
+    type: local
+    tag: gemma3:4b
+    params_b: 4.0
+  # Mid arm (phi4-mini, mistral-7b) runs locally on the M1 via Ollama — same
+  # constrained-decoding stack as the small models (decided in FINDINGS [E3]).
+  # foundry_model kept only as a reference label.
   - id: phi4-mini
     type: local
     tag: phi4-mini

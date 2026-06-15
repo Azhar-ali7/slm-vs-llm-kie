@@ -38,28 +38,47 @@ These do not change between runs — they define the bench.
 |---|---|---|---|
 | smollm2-360m | 0.36B | local (Ollama) | ✅ run |
 | qwen2.5-0.5b | 0.5B | local (Ollama) | ✅ run |
+| gemma3-1b | 1.0B | local (Ollama) | ✅ run |
 | llama3.2-1b | 1.0B | local (Ollama) | ✅ run |
 | gemma2-2b | 2.0B | local (Ollama) | ✅ run |
-| phi4-mini | 3.8B | DO GPU droplet (Ollama, destroy after) | ⏳ pending |
-| mistral-7b | 7.0B | DO GPU droplet (Ollama, destroy after) | ⏳ pending |
-| frontier-llm (**GPT-4o**) | frontier | OpenRouter | ⏳ pending |
-| large-open-llm (**Claude Haiku 4.5**) | frontier | OpenRouter | ⏳ pending |
+| gemma3-4b | 4.0B | local (Ollama) | ✅ run |
+| phi4-mini | 3.8B | local (Ollama, M1) | ✅ run |
+| mistral-7b | 7.0B | local (Ollama, M1) | ✅ run |
+| frontier-llm (**GPT-4o**) | frontier | DO serverless | ⏳ pending (needs `DO_INFERENCE_KEY`) |
+| large-open-llm (**Claude Haiku 4.5**) | frontier | DO serverless | ⏳ pending (needs `DO_INFERENCE_KEY`) |
 
 ---
 
-## 2. Current standings (4 local models, structured-output run)
+## 2. Current standings — 8 local models on M1 (structured-output run)
 
-Source: `results/runs.jsonl` → `results/summary.csv` / `results/REPORT.md`.
+Source: `results/runs.jsonl` → `results/summary.csv` / `results/REPORT.md`. All 80 cells
+(20 docs × 4 conditions) per model; **0 parse failures across every model**. Ranked by F1.
 
-| Model | F1 (macro) | Exact-match | Parse-fail | Latency | Peak mem |
-|---|---|---|---|---|---|
-| smollm2-360m | 0.306 | 0/80 | **0** | ~3.9 s | ~1.1 GB |
-| qwen2.5-0.5b | 0.381 | 0/80 | 0 | ~2.0 s | ~1.5 GB |
-| llama3.2-1b | 0.277 | 0/80 | 0 | ~4.0 s | ~2.1 GB |
-| gemma2-2b | **0.611** | 9/80 | 0 | ~6.9 s | ~2.5 GB |
+| Model | params | F1 | P / R | Exact-match | Med. latency | Peak mem | zero / few-shot |
+|---|---|---|---|---|---|---|---|
+| mistral-7b | 7.0B | **0.642** | .68 / .62 | 8/80 | 18.7 s | 5.0 GB | 0.578 / **0.705** |
+| **gemma3-4b** | 4.0B | **0.639** | .66 / .63 | 7/80 | 8.9 s | 2.6 GB | 0.647 / 0.632 |
+| gemma2-2b | 2.0B | 0.611 | .64 / .59 | 9/80 | 8.1 s | 2.8 GB | 0.573 / 0.650 |
+| phi4-mini | 3.8B | 0.528 | .58 / .51 | **10/80** | 7.1 s | 3.6 GB | 0.587 / 0.469 |
+| gemma3-1b | 1.0B | 0.417 | .42 / .41 | 1/80 | 3.4 s | 2.2 GB | 0.428 / 0.406 |
+| qwen2.5-0.5b | 0.5B | 0.381 | .41 / .37 | 0/80 | 3.1 s | 1.5 GB | 0.337 / 0.425 |
+| smollm2-360m | 0.36B | 0.306 | .31 / .31 | 0/80 | 3.1 s | 1.5 GB | 0.350 / 0.263 |
+| llama3.2-1b | 1.0B | 0.277 | .30 / .27 | 0/80 | 5.1 s | 2.2 GB | **0.529 / 0.025** |
 
-**Headline so far:** clear size→quality trend among small models; gemma2-2b is the best
-free local model. Frontier/cloud models still needed to complete the "small vs large" axis.
+**Headlines:**
+1. **Quality does NOT track parameter count.** The ranking scrambles size: 4B gemma3 ≈ 7B
+   mistral; 2B gemma2 > 3.8B phi4-mini; 1B gemma3 > 1B llama3.2 and the 0.5B/0.36B models.
+   **Architecture & training quality dominate at this scale**, not raw size.
+2. **gemma3-4b is the efficiency winner — the "small is enough" result.** It ties
+   mistral-7b (0.639 vs 0.642) at **4B vs 7B**, with **~half the latency (8.9 s vs 18.7 s)
+   and ~half the memory (2.6 GB vs 5.0 GB)**. The strongest small-vs-large argument in the data.
+3. **The Gemma family leads at every size** (1B/2B/4B); Gemma 3 also beats the prior gen at
+   1B (0.417 vs llama3.2-1b 0.277).
+4. **Few-shot is model-dependent, not universally good.** It *helps* mistral (+0.13) and
+   gemma2 (+0.08) but *destroys* llama3.2-1b (0.529→0.025, context overflow) and hurts
+   phi4-mini (−0.12). Tiny models prefer zero-shot. (→ Phase-3 [P5].)
+5. **Recall < precision for every model** — the bottleneck is *missed* fields, not
+   hallucinations (→ Phase-3 [P4] regex fallback). Large arm (GPT-4o, Claude Haiku) pending DO key.
 
 ---
 
@@ -142,6 +161,27 @@ Each entry: **what changed**, **why (hypothesis)**, **result (before→after)**,
 - **Prereq:** create a DO **model access key** in the Control Panel → `export DO_INFERENCE_KEY=...`.
 - **Result:** ⏳ pending run.
 - **Artifact:** `config/config.yaml`, `src/models/do_runner.py`, `src/models/registry.py`.
+
+### [E4] 2026-06-15 — Mid arm run on M1 + Gemma 3 family added (8 local models complete)
+- **What:** Ran phi4-mini (3.8B) and mistral-7b (7B) locally on the M1 (Ollama, same
+  constrained-decoding stack as the small models). Added the latest **Gemma 3** models to
+  the ladder — `gemma3-1b` (1B) and `gemma3-4b` (4B) — pulled and run on M1. All eight
+  local models now have a full 80-cell run; regenerated `results/` artifacts.
+- **Why:** Completes the local half of the small-vs-large axis and adds a current-generation
+  family across three sizes, enabling generational (Gemma 3 vs Gemma 2) and same-size
+  (gemma3-4b vs phi4-mini) head-to-heads.
+- **Result (see §2 for the full table):**
+  - **gemma3-4b (4B) ties mistral-7b (7B):** F1 0.639 vs 0.642, at **half the latency
+    (8.9 s vs 18.7 s) and half the memory (2.6 GB vs 5.0 GB)** → the efficiency winner.
+  - **Size ≠ quality:** 2B gemma2 (0.611) > 3.8B phi4-mini (0.528); 1B gemma3 (0.417) >
+    1B llama3.2 (0.277). Architecture/training dominate.
+  - **Few-shot is model-specific:** helps mistral (+0.13) / gemma2 (+0.08); destroys
+    llama3.2-1b (0.529→0.025) and hurts phi4-mini (−0.12).
+  - 0 parse failures across all 8 models; mistral-7b ran clean on 8 GB but slow (swap).
+- **Cost:** $0 (all local).
+- **Artifact:** `results/runs.jsonl`, `results/summary.csv`, `results/REPORT.md`, plots.
+- **Dissertation value:** the core mid-sem result — *"for KIE, a well-trained 4B open model
+  matches a 7B at half the cost, and parameter count is a poor predictor of quality."*
 
 ---
 
