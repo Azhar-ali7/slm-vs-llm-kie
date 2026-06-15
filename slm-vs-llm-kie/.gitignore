@@ -11,6 +11,10 @@ results/summary.csv
 results/*.png
 results/REPORT.md
 
+# Frozen evidence snapshots ARE versioned (dissertation record) — exempt them
+!results/snapshots/
+!results/snapshots/**
+
 # Generated report artifacts (keep the directory, ignore outputs)
 report/*.docx
 report/*.pdf

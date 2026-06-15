@@ -95,6 +95,8 @@ Source: `results/runs.jsonl` → `results/summary.csv` / `results/REPORT.md`. Al
 | `results/plot_cost_frontier.png` | Quality vs cost trade-off |
 | `results/plot_field_heatmap.png` | Per-field F1 heatmap (which fields are hard) |
 | `results/manifest.json` | Run provenance (seed, platform, models, datasets) |
+| `results/snapshots/2026-06-15-phase2-baseline/` | **Versioned** frozen copy of the 8-model run (runs.jsonl, summary.csv, REPORT.md, plots) — the live `results/` files above are gitignored as regenerable |
+| `scripts/run_large_arm.sh` | One-command large-arm run (GPT-4o + Claude Haiku on DO serverless); needs `DO_INFERENCE_KEY` |
 
 ---
 
