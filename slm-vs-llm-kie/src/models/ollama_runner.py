@@ -7,6 +7,7 @@ M1 / 8GB notes:
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 from typing import Any
@@ -73,7 +74,9 @@ class OllamaRunner(ModelRunner):
     def __init__(self, model_id: str, tag: str, ollama_cfg: dict[str, Any]):
         super().__init__(model_id=model_id, kind="local")
         self.tag = tag
-        self.host = ollama_cfg["host"].rstrip("/")
+        # OLLAMA_HOST env wins over config so a remote droplet can be targeted
+        # without editing (and dirtying) the committed config.yaml.
+        self.host = os.environ.get("OLLAMA_HOST", ollama_cfg["host"]).rstrip("/")
         self.temperature = ollama_cfg.get("temperature", 0.0)
         self.num_predict = ollama_cfg.get("num_predict", 512)
         self.seed = ollama_cfg.get("seed", 42)

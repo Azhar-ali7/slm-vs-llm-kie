@@ -113,29 +113,39 @@ Each entry: **what changed**, **why (hypothesis)**, **result (before→after)**,
 - **Dissertation value:** A self-contained finding for the Discussion — *"constrained
   decoding is a free, high-ROI intervention that disproportionately benefits sub-1B models."*
 
-### [E3] 2026-06-15 — Large arm set to frontier commercial models (GPT-4o + Claude Haiku 4.5)
-- **What:** Repointed the two large-model slots in `config.yaml` (`api.openrouter.models`)
-  from free open models (Qwen3-80B / Llama-3.3-70B) to **frontier commercial** models:
-  `frontier-llm → openai/gpt-4o`, `large-open-llm → anthropic/claude-haiku-4.5`. Both
-  served through the *existing* OpenRouter runner (OpenAI-compatible) — **no code change**.
-- **Hypothesis:** A real frontier model from each major lab is the most credible "large
-  LLM" arm for the small-vs-large axis; it should set the practical quality ceiling.
+### [E3] 2026-06-15 — Compute scope locked to **local M1 + DigitalOcean only**
+- **What / decision:** Every model runs on either the M1 (Ollama) or DigitalOcean —
+  no OpenRouter, no Azure, no direct OpenAI/Anthropic. Final allocation:
+  - **Small (smollm2, qwen, llama, gemma)** → M1 Ollama (done).
+  - **Mid (phi4-mini 3.8B, mistral-7b 7B)** → **M1 Ollama** — same constrained-decoding
+    stack as the small models (most apples-to-apples); not in DO's catalog anyway.
+    Switched both `type: foundry` → `type: local`.
+  - **Large (GPT-4o, Claude Haiku 4.5)** → **DigitalOcean serverless inference**.
+- **Why this is optimal under the constraint:** DO serverless inference is OpenAI-compatible
+  (`https://inference.do-ai.run/v1`), hosts GPT-4o (`openai-gpt-4o`) and Claude Haiku 4.5
+  (`anthropic-claude-haiku-4.5`) directly, is **pay-per-token (no idle/hourly billing)**, and
+  bills to the **$200 credit** — keeping the strong frontier large arm with **no GPU droplet**
+  to provision or remember to destroy. (The droplet idea was dropped for exactly that
+  hourly-billing risk; the earlier OpenRouter wiring was removed per the no-OpenRouter rule.)
+- **Code:** Added `src/models/do_runner.py` (`DigitalOceanRunner`, trimmed OpenAI-compatible
+  client) + `type: do_serverless` in the registry; `api.digitalocean` block in config. Made
+  the Ollama host env-overridable (`OLLAMA_HOST`) — harmless, kept for flexibility.
 - **Note (method):** Constrained/structured decoding fires only for `kind == "local"`
-  (`run.py:128`); GPT/Claude use prompt-instructed JSON. This is intentional and is itself
-  a finding — *constrained decoding is the SLM equalizer; frontier models don't need it.*
-- **Cost:** ~120K in / ~40K out per model across the 80-cell grid → GPT-4o ≈ $0.70,
-  Claude Haiku 4.5 ≈ $0.30; **large arm ≈ $1 total**. Needs ≥$10 OpenRouter credit (also
-  lifts the free-tier rate limit).
+  (`run.py:128`); the large models use prompt-instructed JSON. Intentional, and itself a
+  finding — *constrained decoding is the SLM equalizer; frontier models don't need it.*
+- **Cost:** mid arm **$0** (local); large arm ~120K in / ~40K out per model → **~$1 total**
+  on the DO credit.
+- **Prereq:** create a DO **model access key** in the Control Panel → `export DO_INFERENCE_KEY=...`.
 - **Result:** ⏳ pending run.
-- **Artifact:** `config/config.yaml` (the swap); results will land in `results/runs.jsonl`.
+- **Artifact:** `config/config.yaml`, `src/models/do_runner.py`, `src/models/registry.py`.
 
 ---
 
 ## 5. Planned / candidate experiments (not yet run)
 
-- **[P1] Add the mid + frontier models** (phi4-mini, mistral-7b, Qwen3-80B, Llama-70B) to
-  complete the small-vs-large axis. *Decision pending: where to run phi4-mini/mistral-7b
-  (local / OpenRouter paid / DigitalOcean droplet / Azure managed-then-delete).*
+- **[P1] Run the mid + large arms** to complete the small-vs-large axis. *Placement decided
+  (see [E3]):* mid (phi4-mini, mistral-7b) on M1 Ollama; large (GPT-4o, Claude Haiku 4.5) on
+  DO serverless. Remaining: `export DO_INFERENCE_KEY`, `ollama pull phi4-mini mistral`, run.
 - **[P2] Drop few-shot for the smallest models** — llama3.2-1b collapsed under few_shot
   (F1 0.025 vs 0.47 zero-shot; the 2 examples blew its context). Hypothesis: tiny models
   do better zero-shot. Worth an explicit per-model shot-mode comparison.

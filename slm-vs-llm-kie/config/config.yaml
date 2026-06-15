@@ -74,24 +74,29 @@ models:
   # phi4-mini & mistral run on Azure AI Foundry serverless (no 8GB pressure).
   # Requires AZURE_FOUNDRY_ENDPOINT + AZURE_FOUNDRY_API_KEY in .env and the
   # models deployed in your Foundry project (see api.foundry.models below).
+  # Mid arm runs on a DigitalOcean GPU droplet via Ollama (target it with
+  # OLLAMA_HOST=http://<droplet-ip>:11434) — same constrained-decoding stack as
+  # the small models. foundry_model kept for reference if you switch back.
   - id: phi4-mini
-    type: foundry
-    foundry_model: phi4-mini          # -> api.foundry.models.phi4-mini
-    tag: phi4-mini                    # used only if you switch type:local
+    type: local
+    tag: phi4-mini
+    foundry_model: phi4-mini
     params_b: 3.8
   - id: mistral-7b
-    type: foundry
-    foundry_model: mistral
+    type: local
     tag: mistral
+    foundry_model: mistral
     params_b: 7.0
+  # Large arm = frontier commercial models, served via DigitalOcean serverless
+  # inference (pay-per-token on the $200 credit; no GPU droplet, no idle billing).
   - id: frontier-llm
-    type: openrouter
-    openrouter_model: frontier-llm    # free strong model (Qwen3-Next-80B)
+    type: do_serverless
+    do_model: frontier-llm            # -> api.digitalocean.models.frontier-llm (GPT-4o)
     params_b: null                    # plotted separately (size unknown/closed-proxy)
   - id: large-open-llm
-    type: openrouter
-    openrouter_model: large-open-llm  # free Llama-3.3-70B
-    params_b: 70.0
+    type: do_serverless
+    do_model: large-open-llm          # -> api.digitalocean.models.large-open-llm (Claude Haiku 4.5)
+    params_b: null                    # closed-proxy; size unknown
 
 # ----------------------------------------------------------------------------
 # Local model runtime (Ollama on M1 / 8GB unified memory)
@@ -109,10 +114,34 @@ ollama:
   mem_sample_interval_s: 0.25   # how often to poll ollama-server RSS during a call
 
 # ----------------------------------------------------------------------------
-# API models — Azure OpenAI
+# API models — ACTIVE cloud path: DigitalOcean serverless inference
+# (Azure / OpenRouter blocks kept below for reference but unused.)
 # ----------------------------------------------------------------------------
 api:
-  provider: azure_openai    # azure_openai | anthropic | openai
+  provider: azure_openai    # azure_openai | anthropic | openai (only affects type:api)
+
+  # --- DigitalOcean serverless inference (ACTIVE large arm) ----------------
+  # OpenAI-compatible (https://inference.do-ai.run/v1), single "model access
+  # key" (env DO_INFERENCE_KEY, created in DO Control Panel). Pay-per-token on
+  # the $200 credit — no GPU droplet, no idle/hourly billing. Hosts GPT-4o and
+  # Claude Haiku 4.5 directly. Whole-grid (80 cells) cost ~$1 total.
+  digitalocean:
+    base_url: "https://inference.do-ai.run/v1"
+    api_key_env: DO_INFERENCE_KEY
+    temperature: 0.0
+    max_tokens: 512
+    request_timeout_s: 60
+    models:
+      # model = DigitalOcean catalog model ID. Prices USD per 1M tokens
+      # (set from the DO pricing page; used only for the cost plot).
+      frontier-llm:
+        model: "openai-gpt-4o"
+        price_in: 2.50
+        price_out: 10.00
+      large-open-llm:
+        model: "anthropic-claude-haiku-4.5"
+        price_in: 1.00
+        price_out: 5.00
 
   # --- Azure OpenAI (GPT models only) -------------------------------------
   azure:
