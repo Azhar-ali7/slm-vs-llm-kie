@@ -32,7 +32,9 @@ class ModelRunner(ABC):
         self.kind = kind
 
     @abstractmethod
-    def run(self, prompt: str) -> RunResult:  # pragma: no cover - interface
+    def run(self, prompt: str, response_format: dict | None = None) -> RunResult:  # pragma: no cover
+        """Run the prompt. `response_format` is an optional JSON schema for
+        constrained decoding (used by the local Ollama runner; others may ignore)."""
         ...
 
     def ensure_available(self) -> None:

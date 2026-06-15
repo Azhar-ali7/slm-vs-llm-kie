@@ -88,7 +88,7 @@ class MockRunner(ModelRunner):
     def ensure_available(self) -> None:
         return None
 
-    def run(self, prompt: str) -> RunResult:
+    def run(self, prompt: str, response_format: dict | None = None) -> RunResult:
         start = time.perf_counter()
         extracted = _heuristic_extract(prompt)
         text = json.dumps(extracted, ensure_ascii=False)

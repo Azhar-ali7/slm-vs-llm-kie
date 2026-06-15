@@ -22,6 +22,18 @@ def _load_template(name: str) -> str:
     return (_TEMPLATE_DIR / name).read_text(encoding="utf-8")
 
 
+def json_schema_format(schema: dict[str, Any]) -> dict[str, Any]:
+    """A JSON schema for constrained decoding (Ollama `format`): every target
+    field required as a string, so the model must emit valid JSON with all keys.
+    Missing values are written as "null"/"" (treated as null by metrics)."""
+    props = {f["name"]: {"type": "string"} for f in schema["fields"]}
+    return {
+        "type": "object",
+        "properties": props,
+        "required": [f["name"] for f in schema["fields"]],
+    }
+
+
 def field_spec(schema: dict[str, Any]) -> str:
     rows = []
     for f in schema["fields"]:

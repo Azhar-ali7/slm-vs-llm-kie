@@ -71,20 +71,19 @@ models:
     type: local
     tag: gemma2:2b
     params_b: 2.0
-  # No OpenRouter credits -> only ":free" models are usable, and OpenRouter has
-  # no free Phi or Mistral-7B. So phi4-mini & mistral run LOCALLY on Ollama
-  # (laptop or a DigitalOcean droplet), and the two LARGE models use OpenRouter
-  # FREE slugs ($0, rate-limited ~50 req/day without credit).
+  # phi4-mini & mistral run on Azure AI Foundry serverless (no 8GB pressure).
+  # Requires AZURE_FOUNDRY_ENDPOINT + AZURE_FOUNDRY_API_KEY in .env and the
+  # models deployed in your Foundry project (see api.foundry.models below).
   - id: phi4-mini
-    type: local
-    tag: phi4-mini
+    type: foundry
+    foundry_model: phi4-mini          # -> api.foundry.models.phi4-mini
+    tag: phi4-mini                    # used only if you switch type:local
     params_b: 3.8
-    large: true                       # ~3GB, tight on 8GB -> --skip-large or droplet
   - id: mistral-7b
-    type: local
+    type: foundry
+    foundry_model: mistral
     tag: mistral
     params_b: 7.0
-    large: true                       # ~5GB, will swap on 8GB -> droplet/opt-in
   - id: frontier-llm
     type: openrouter
     openrouter_model: frontier-llm    # free strong model (Qwen3-Next-80B)
@@ -104,6 +103,8 @@ ollama:
   seed: 42
   keep_alive: "5m"          # keep model loaded across its batch (small models);
                             # set 0 to unload after each call (safer for 7B on 8GB)
+  structured_output: true   # constrained JSON decoding (forces valid JSON w/ all
+                            # fields) — fixes parse failures, boosts small-model F1
   request_timeout_s: 600    # big models on 8GB can be slow; be generous
   mem_sample_interval_s: 0.25   # how often to poll ollama-server RSS during a call
 
@@ -170,18 +171,18 @@ api:
     request_timeout_s: 60
     title: "slm-vs-llm-kie"
     models:
-      # FREE slugs ($0) because the account has no credit. Free tier is
-      # rate-limited (~50 requests/day without >=$10 credit). To run faster or
-      # use stronger paid models, add credit and swap to paid slugs, e.g.
-      # frontier -> openai/gpt-4o-mini (0.15/0.60), large-open -> .../llama-3.3-70b-instruct (0.10/0.32).
+      # LARGE ARM = frontier commercial models (the "large LLM" comparison),
+      # both served via OpenRouter's OpenAI-compatible API. Needs >=$10 credit
+      # on the account (also lifts the free-tier ~50 req/day rate limit).
+      # Prices are USD per 1M tokens; whole-grid (80 cells) cost is ~$1 total.
       frontier-llm:
-        model: "qwen/qwen3-next-80b-a3b-instruct:free"
-        price_in: 0.0
-        price_out: 0.0
+        model: "openai/gpt-4o"
+        price_in: 2.50
+        price_out: 10.00
       large-open-llm:
-        model: "meta-llama/llama-3.3-70b-instruct:free"
-        price_in: 0.0
-        price_out: 0.0
+        model: "anthropic/claude-haiku-4.5"
+        price_in: 1.00
+        price_out: 5.00
       # Paid Phi/Mistral exist but need credit; phi4-mini & mistral run on Ollama:
       #   phi4-mini: {model: microsoft/phi-4-mini-instruct, price_in: 0.08, price_out: 0.35}
       #   mistral:   {model: mistralai/ministral-8b-2512,   price_in: 0.15, price_out: 0.15}

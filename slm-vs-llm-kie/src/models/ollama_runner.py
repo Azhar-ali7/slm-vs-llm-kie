@@ -97,7 +97,7 @@ class OllamaRunner(ModelRunner):
                 f"Ollama model '{self.tag}' not found. Pull it: `ollama pull {self.tag}`."
             )
 
-    def run(self, prompt: str) -> RunResult:
+    def run(self, prompt: str, response_format: dict | None = None) -> RunResult:
         sampler = _OllamaMemSampler(self.mem_interval)
         payload = {
             "model": self.tag,
@@ -110,6 +110,8 @@ class OllamaRunner(ModelRunner):
                 "seed": self.seed,
             },
         }
+        if response_format is not None:
+            payload["format"] = response_format  # constrained JSON decoding
         sampler.start()
         start = time.perf_counter()
         try:

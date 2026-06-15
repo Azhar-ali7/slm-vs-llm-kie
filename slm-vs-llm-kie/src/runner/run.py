@@ -28,7 +28,7 @@ from src.eval.metrics import score_document
 from src.eval.parse import parse_prediction
 from src.models.base import RunResult
 from src.models.registry import build_runners, model_meta
-from src.prompts.builder import build_prompt
+from src.prompts.builder import build_prompt, json_schema_format
 from src.runner.results_store import append_row, cell_key, completed_keys, write_manifest
 
 _TRANSIENT = ("timeout", "ratelimit", "rate_limit", "connection", "429", "503",
@@ -54,13 +54,14 @@ def _retry_delay(error: str, attempt: int, backoff: float, cap: float = 90.0) ->
     return min(backoff * (2 ** (attempt - 1)), cap)
 
 
-def _run_with_retry(runner, prompt: str, attempts: int, backoff: float) -> RunResult:
-    result = runner.run(prompt)
+def _run_with_retry(runner, prompt: str, attempts: int, backoff: float,
+                    response_format: dict | None = None) -> RunResult:
+    result = runner.run(prompt, response_format)
     for attempt in range(1, attempts):
         if not result.error or not _is_transient(result.error):
             return result
         time.sleep(_retry_delay(result.error, attempt, backoff))
-        result = runner.run(prompt)
+        result = runner.run(prompt, response_format)
     return result
 
 
@@ -84,6 +85,7 @@ def run_eval(
     n_samples = int(cfg["conditions"]["n_samples"])
     few_shot_k = int(cfg["conditions"]["few_shot_k"])
     max_lines = cfg["conditions"].get("max_input_lines")
+    structured = cfg["ollama"].get("structured_output", False)  # local JSON-constrained decoding
 
     if pilot:
         records = records[: cfg["run"]["pilot_docs"]]
@@ -122,6 +124,8 @@ def run_eval(
             schema = schema_for_record(cfg, rec)
             gold = align_gold(rec.get("gold", {}), schema)
             simple_json = from_dataset_record(rec)
+            # Constrained JSON decoding applies to local (Ollama) models only.
+            rf = json_schema_format(schema) if (structured and runner.kind == "local") else None
 
             for shot in shot_modes:
                 examples = (
@@ -139,6 +143,7 @@ def run_eval(
                             runner, prompt,
                             attempts=cfg["run"]["retry_attempts"],
                             backoff=cfg["run"]["retry_backoff_s"],
+                            response_format=rf,
                         )
                         pred, perr = parse_prediction(result.text, schema)
                         score = score_document(gold, pred, schema)
