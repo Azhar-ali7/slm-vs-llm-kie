@@ -9,7 +9,11 @@
 - **Project:** Comparing small local LLMs (0.36B–7B, Ollama) vs large cloud LLMs on
   Key Information Extraction (KIE) from financial documents.
 - **Author:** Azhar Ali · BITS ID 2024AA05791 · AIMLCZG628T (M.Tech AI & ML)
-- **Last updated:** 2026-06-13
+- **Last updated:** 2026-06-15
+- **Dissertation phases:** (1) Abstract ✅ done · (2) **Mid-sem — current** (baseline
+  small-vs-large comparison + constrained decoding) · (3) Final viva (fine-tuning &
+  recall-lift improvements, *reserved* — see §5). This document is the single running
+  record across all three.
 
 ---
 
@@ -141,17 +145,50 @@ Each entry: **what changed**, **why (hypothesis)**, **result (before→after)**,
 
 ---
 
-## 5. Planned / candidate experiments (not yet run)
+## 5. Roadmap — Phase 2 (mid-sem, now) vs Phase 3 (final viva, reserved)
 
-- **[P1] Run the mid + large arms** to complete the small-vs-large axis. *Placement decided
-  (see [E3]):* mid (phi4-mini, mistral-7b) on M1 Ollama; large (GPT-4o, Claude Haiku 4.5) on
-  DO serverless. Remaining: `export DO_INFERENCE_KEY`, `ollama pull phi4-mini mistral`, run.
-- **[P2] Drop few-shot for the smallest models** — llama3.2-1b collapsed under few_shot
-  (F1 0.025 vs 0.47 zero-shot; the 2 examples blew its context). Hypothesis: tiny models
-  do better zero-shot. Worth an explicit per-model shot-mode comparison.
+The work is deliberately split so **mid-sem is a complete, standalone result** (the
+baseline small-vs-large comparison) while the **improvement story is reserved for the
+viva** — so there is substantial, novel work left to present in Phase 3. The frozen
+`runs_baseline.jsonl` + this changelog are the bridge: every Phase-3 change is measured
+as a before→after delta against the Phase-2 baseline using the identical A/B method.
+
+### Phase 2 — Mid-sem (finish now; no fine-tuning)
+Goal: answer the core research question end-to-end on a fixed bench.
+- **[P1] Complete the 8-model baseline** across the small→large ladder. *Placement final
+  (see [E3]):* small + **mid (phi4-mini, mistral-7b) on M1 Ollama**; large (GPT-4o, Claude
+  Haiku 4.5) on **DO serverless**. Remaining ops: `ollama pull phi4-mini mistral` + run the
+  mid arm (free); `export DO_INFERENCE_KEY` + run the large arm (~$1 on the DO credit).
+- **[P1b] Efficiency/cost frontier** — finalise latency, peak memory, tokens/s and $ per
+  model; the quality-vs-cost trade-off plot is the second mid-sem headline alongside [E2].
+- **Status:** constrained-decoding finding ([E2]) done; small ladder done; mid + large
+  arms pending the runs above. **Nothing else from this list is done at mid-sem.**
+
+### Phase 3 — Final viva (reserved; do NOT start before mid-sem is submitted)
+Goal: the *improvement* narrative — how to make small models competitive.
+- **[P2] ⭐ Headline: QLoRA fine-tuning** of phi4-mini + mistral-7b on the **train splits
+  only** (SROIE + Kleister), then re-run the **same frozen 20×4 grid** for a clean
+  before→after delta vs the Phase-2 baseline.
+  - *Why it's the viva centrepiece:* targets the punchline *"a fine-tuned 3.8B/7B matches
+    or beats GPT-4o zero-shot on this narrow KIE task at a fraction of cost/latency"* —
+    turning the thesis from "big beats small" into "small + task-tuning closes the gap."
+  - *Infra:* this is where the **DO GPU droplet** is justified (QLoRA 7B fits ~16–24 GB
+    VRAM; a couple of hours ≈ a few $ of the credit; **destroy the droplet after**).
+  - *Stack:* Unsloth (single-GPU, exports **GGUF** → drops straight back into the Ollama
+    harness as e.g. `phi4-mini-ft`, `type: local`). Axolotl/PEFT as alternatives.
+  - *Data hygiene (non-negotiable):* fine-tune on train splits ONLY; the frozen 20-doc
+    test set must never leak in, or the result is worthless. `build_test_set` already
+    separates them — keep it that way.
+  - *Scope note:* fine-tuning was an out-of-scope *limitation* in the original proposal;
+    moving it in is a deliberate Phase-3 expansion — confirm with supervisor it fits the
+    viva timeline.
 - **[P3] Self-consistency voting** (n_samples=3, majority vote per field) — does sampling
   + vote beat a single greedy decode for small models?
 - **[P4] Hybrid regex fallback** — fill nulls with rule-based extraction (dates, £ amounts,
-  postcodes) when the model leaves a field empty; measure recall lift.
-- **[P5] Per-field error analysis** — use `plot_field_heatmap.png` to identify which fields
-  (e.g. Kleister income/expenditure) drive most of the loss.
+  postcodes) when the model leaves a field empty; measure recall lift (recall is the
+  known bottleneck — see §2 headline).
+- **[P5] Drop few-shot for the smallest models** — llama3.2-1b collapsed under few_shot
+  (F1 0.025 vs 0.47 zero-shot; the 2 examples blew its context). Explicit per-model
+  shot-mode comparison.
+- **[P6] Per-field error analysis** — use `plot_field_heatmap.png` to identify which fields
+  (e.g. Kleister income/expenditure) drive most of the loss; motivates [P4].
