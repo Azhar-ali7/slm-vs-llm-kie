@@ -22,7 +22,7 @@ fi
 echo "==> [1/3] Verifying the configured model IDs exist in your DO catalog"
 AVAIL="$(curl -fsS https://inference.do-ai.run/v1/models \
   -H "Authorization: Bearer $DO_INFERENCE_KEY" | python3 -c 'import sys,json; print("\n".join(m["id"] for m in json.load(sys.stdin)["data"]))')"
-for want in openai-gpt-4o anthropic-claude-haiku-4.5; do
+for want in openai-gpt-oss-120b llama3.3-70b-instruct; do
   if echo "$AVAIL" | grep -qx "$want"; then
     echo "    OK  $want"
   else
@@ -36,7 +36,7 @@ done
 echo "==> [2/3] Smoke test: one direct completion (no side effects on runs.jsonl)"
 curl -fsS https://inference.do-ai.run/v1/chat/completions \
   -H "Authorization: Bearer $DO_INFERENCE_KEY" -H "Content-Type: application/json" \
-  -d '{"model":"openai-gpt-4o","messages":[{"role":"user","content":"reply with the single word: ok"}],"max_tokens":5}' \
+  -d '{"model":"openai-gpt-oss-120b","messages":[{"role":"user","content":"reply with the single word: ok"}],"max_tokens":5}' \
   | python3 -c 'import sys,json; print("    reply:", repr(json.load(sys.stdin)["choices"][0]["message"]["content"]))' || {
   echo "Smoke test failed — check the key/catalog before the full run."; exit 1; }
 

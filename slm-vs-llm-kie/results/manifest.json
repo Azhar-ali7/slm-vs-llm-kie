@@ -1,13 +1,13 @@
 {
-  "timestamp": "2026-06-15T12:12:25.914238+00:00",
+  "timestamp": "2026-06-15T16:40:54.362525+00:00",
   "pilot": false,
   "seed": 42,
   "python": "3.12.4",
   "platform": "macOS-15.5-arm64-arm-64bit",
   "models": [
     {
-      "id": "gemma3-4b",
-      "kind": "local"
+      "id": "gemma4-31b",
+      "kind": "api"
     }
   ],
   "n_docs": 20,

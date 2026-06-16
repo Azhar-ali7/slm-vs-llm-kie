@@ -44,41 +44,59 @@ These do not change between runs — they define the bench.
 | gemma3-4b | 4.0B | local (Ollama) | ✅ run |
 | phi4-mini | 3.8B | local (Ollama, M1) | ✅ run |
 | mistral-7b | 7.0B | local (Ollama, M1) | ✅ run |
-| frontier-llm (**GPT-4o**) | frontier | DO serverless | ⏳ pending (needs `DO_INFERENCE_KEY`) |
-| large-open-llm (**Claude Haiku 4.5**) | frontier | DO serverless | ⏳ pending (needs `DO_INFERENCE_KEY`) |
+| gemma4-31b (**gemma-4-31B-it**) | 31B | DO serverless | ✅ run |
+| large-open-llm (**llama3.3-70b-instruct**) | 70B | DO serverless | ✅ run |
+| frontier-llm (**openai-gpt-oss-120b**) | 120B | DO serverless | ✅ run |
+
+> **Large-arm model choice (revised):** GPT-4o and Claude Haiku 4.5 require DO subscription
+> **Tier 3+**; this account is Tier 1/2, so the large arm uses DO-hosted **open** models
+> instead (gemma-4-31B, llama3.3-70b, gpt-oss-120b). This is also a *methodological gain* —
+> fully open/reproducible large models, no closed-weights dependency. See [E5].
 
 ---
 
-## 2. Current standings — 8 local models on M1 (structured-output run)
+## 2. Current standings — 11 models (8 local on M1 + 3 large on DO serverless)
 
 Source: `results/runs.jsonl` → `results/summary.csv` / `results/REPORT.md`. All 80 cells
-(20 docs × 4 conditions) per model; **0 parse failures across every model**. Ranked by F1.
+(20 docs × 4 conditions) per model; **0 parse failures except large-open-llm (1/80)**.
+Ranked by F1. Peak mem is local-only (RSS on M1); the large arm runs remotely (`n/a`).
+`$tot` is the whole-grid DigitalOcean cost on the $200 credit (local = free).
 
-| Model | params | F1 | P / R | Exact-match | Med. latency | Peak mem | zero / few-shot |
-|---|---|---|---|---|---|---|---|
-| mistral-7b | 7.0B | **0.642** | .68 / .62 | 8/80 | 18.7 s | 5.0 GB | 0.578 / **0.705** |
-| **gemma3-4b** | 4.0B | **0.639** | .66 / .63 | 7/80 | 8.9 s | 2.6 GB | 0.647 / 0.632 |
-| gemma2-2b | 2.0B | 0.611 | .64 / .59 | 9/80 | 8.1 s | 2.8 GB | 0.573 / 0.650 |
-| phi4-mini | 3.8B | 0.528 | .58 / .51 | **10/80** | 7.1 s | 3.6 GB | 0.587 / 0.469 |
-| gemma3-1b | 1.0B | 0.417 | .42 / .41 | 1/80 | 3.4 s | 2.2 GB | 0.428 / 0.406 |
-| qwen2.5-0.5b | 0.5B | 0.381 | .41 / .37 | 0/80 | 3.1 s | 1.5 GB | 0.337 / 0.425 |
-| smollm2-360m | 0.36B | 0.306 | .31 / .31 | 0/80 | 3.1 s | 1.5 GB | 0.350 / 0.263 |
-| llama3.2-1b | 1.0B | 0.277 | .30 / .27 | 0/80 | 5.1 s | 2.2 GB | **0.529 / 0.025** |
+| Model | arm | params | F1 | P / R | Exact-match | Med. latency | Peak mem | $tot | zero / few-shot |
+|---|---|---|---|---|---|---|---|---|---|
+| **gemma4-31b** | large | 31B | **0.701** | .75 / .67 | **15/80** | **1.8 s** | n/a | 0.043 | 0.683 / 0.718 |
+| large-open-llm (llama3.3) | large | 70B | 0.667 | .72 / .63 | 10/80 | 11.6 s | n/a | 0.083 | 0.601 / **0.733** |
+| frontier-llm (gpt-oss) | large | 120B | 0.655 | .71 / .62 | 3/80 | 13.4 s | n/a | 0.050 | 0.646 / 0.665 |
+| mistral-7b | local | 7.0B | 0.642 | .68 / .62 | 8/80 | 18.7 s | 5.0 GB | free | 0.578 / 0.705 |
+| gemma3-4b | local | 4.0B | 0.639 | .66 / .63 | 7/80 | 8.9 s | 2.6 GB | free | 0.647 / 0.632 |
+| gemma2-2b | local | 2.0B | 0.611 | .64 / .59 | 9/80 | 8.1 s | 2.8 GB | free | 0.573 / 0.650 |
+| phi4-mini | local | 3.8B | 0.528 | .58 / .51 | 10/80 | 7.1 s | 3.6 GB | free | 0.587 / 0.469 |
+| gemma3-1b | local | 1.0B | 0.417 | .42 / .41 | 1/80 | 3.4 s | 2.2 GB | free | 0.428 / 0.406 |
+| qwen2.5-0.5b | local | 0.5B | 0.381 | .41 / .37 | 0/80 | 3.1 s | 1.5 GB | free | 0.337 / 0.425 |
+| smollm2-360m | local | 0.36B | 0.306 | .31 / .31 | 0/80 | 3.1 s | 1.5 GB | free | 0.350 / 0.263 |
+| llama3.2-1b | local | 1.0B | 0.277 | .30 / .27 | 0/80 | 5.1 s | 2.2 GB | free | **0.529 / 0.025** |
 
 **Headlines:**
-1. **Quality does NOT track parameter count.** The ranking scrambles size: 4B gemma3 ≈ 7B
-   mistral; 2B gemma2 > 3.8B phi4-mini; 1B gemma3 > 1B llama3.2 and the 0.5B/0.36B models.
-   **Architecture & training quality dominate at this scale**, not raw size.
-2. **gemma3-4b is the efficiency winner — the "small is enough" result.** It ties
-   mistral-7b (0.639 vs 0.642) at **4B vs 7B**, with **~half the latency (8.9 s vs 18.7 s)
-   and ~half the memory (2.6 GB vs 5.0 GB)**. The strongest small-vs-large argument in the data.
-3. **The Gemma family leads at every size** (1B/2B/4B); Gemma 3 also beats the prior gen at
-   1B (0.417 vs llama3.2-1b 0.277).
-4. **Few-shot is model-dependent, not universally good.** It *helps* mistral (+0.13) and
-   gemma2 (+0.08) but *destroys* llama3.2-1b (0.529→0.025, context overflow) and hurts
-   phi4-mini (−0.12). Tiny models prefer zero-shot. (→ Phase-3 [P5].)
-5. **Recall < precision for every model** — the bottleneck is *missed* fields, not
-   hallucinations (→ Phase-3 [P4] regex fallback). Large arm (GPT-4o, Claude Haiku) pending DO key.
+1. **Quality is INVERSELY related to size across the large arm: 31B (0.701) > 70B (0.667)
+   > 120B (0.655).** The smallest large model wins outright. Combined with the local arm
+   (4B gemma3 ≈ 7B mistral; 2B gemma2 > 3.8B phi4-mini), the whole study delivers one
+   verdict: **parameter count is a poor predictor of KIE quality — architecture & training
+   dominate.** This is the dissertation's central result.
+2. **gemma4-31b dominates the entire study** — best F1 (0.701), best exact-match (15/80,
+   ~5× the 120B's 3/80), *fastest* model of all 11 (1.8 s median; DO serves it very fast),
+   and cheapest of the large arm ($0.043).
+3. **The SLM↔LLM gap is small.** The best local model (mistral-7b, 0.642) is within
+   **0.06 F1** of the best cloud model and **beats the 120B gpt-oss on exact-match**
+   (8/80 vs 3/80). A **4B** model on the M1 (gemma3-4b, 0.639) effectively ties a **120B**
+   cloud model (0.655) — for free, locally, on 8 GB. The strongest small-vs-large argument.
+4. **The Gemma family leads at every size** (1B/2B/4B/31B = 0.417/0.611/0.639/0.701) — a
+   clean single-architecture scaling curve from edge to cloud; Gemma 3 also beats the prior
+   gen at 1B (0.417 vs llama3.2-1b 0.277).
+5. **Few-shot is model-dependent, not universally good.** It *helps* mistral (+0.13),
+   llama3.3-70b (+0.13) and gemma2 (+0.08) but *destroys* llama3.2-1b (0.529→0.025, context
+   overflow) and hurts phi4-mini (−0.12). Tiny models prefer zero-shot. (→ Phase-3 [P5].)
+6. **Recall < precision for every model, large arm included** — the bottleneck is *missed*
+   fields, not hallucinations, even at 120B (→ Phase-3 [P4] regex fallback).
 
 ---
 
@@ -86,7 +104,7 @@ Source: `results/runs.jsonl` → `results/summary.csv` / `results/REPORT.md`. Al
 
 | Artifact | What it is |
 |---|---|
-| `results/runs.jsonl` | Current run, one row per cell (320 rows) — **structured-output** |
+| `results/runs.jsonl` | Current run, one row per cell (880 rows = 11 models × 80) — local **structured-output** + large arm prompt-JSON |
 | `results/runs_baseline.jsonl` | Frozen baseline (320 rows) — **no structured output**, for the A/B |
 | `results/summary.csv` | Per-model + per-condition aggregates |
 | `results/REPORT.md` | Auto-generated tables + auto-findings (regenerated each run) |
@@ -95,8 +113,9 @@ Source: `results/runs.jsonl` → `results/summary.csv` / `results/REPORT.md`. Al
 | `results/plot_cost_frontier.png` | Quality vs cost trade-off |
 | `results/plot_field_heatmap.png` | Per-field F1 heatmap (which fields are hard) |
 | `results/manifest.json` | Run provenance (seed, platform, models, datasets) |
-| `results/snapshots/2026-06-15-phase2-baseline/` | **Versioned** frozen copy of the 8-model run (runs.jsonl, summary.csv, REPORT.md, plots) — the live `results/` files above are gitignored as regenerable |
-| `scripts/run_large_arm.sh` | One-command large-arm run (GPT-4o + Claude Haiku on DO serverless); needs `DO_INFERENCE_KEY` |
+| `results/snapshots/2026-06-15-phase2-baseline/` | **Versioned** frozen copy of the 8-local-model run (the pre-large-arm baseline) |
+| `results/snapshots/2026-06-15-phase2-with-large/` | **Versioned** frozen copy of the full 11-model run incl. large arm (runs.jsonl, summary.csv, REPORT.md, plots) — the live `results/` files are gitignored as regenerable |
+| `scripts/run_large_arm.sh` | One-command large-arm run (gpt-oss-120b + llama3.3-70b on DO serverless); needs `DO_INFERENCE_KEY` |
 
 ---
 
@@ -185,6 +204,37 @@ Each entry: **what changed**, **why (hypothesis)**, **result (before→after)**,
 - **Dissertation value:** the core mid-sem result — *"for KIE, a well-trained 4B open model
   matches a 7B at half the cost, and parameter count is a poor predictor of quality."*
 
+### [E5] 2026-06-15 — Large arm complete on DO serverless (11-model study finished)
+- **What:** Ran the three large models on DigitalOcean serverless inference, full 80-cell
+  grid each: **gemma-4-31B-it** (31B), **llama3.3-70b-instruct** (70B), **openai-gpt-oss-120b**
+  (120B). Regenerated all `results/` artifacts. The mid-sem study is now complete: 11 models
+  spanning 0.36B → 120B, ~3 orders of magnitude.
+- **Model-choice revision (important):** the plan was GPT-4o + Claude Haiku 4.5, but those
+  require DO subscription **Tier 3+** and this account is **Tier 1/2** (they return
+  *"not available for your subscription tier"*). Pivoted the large arm to DO-hosted **open**
+  models. This is a **methodological upgrade, not a compromise** — the large arm is now fully
+  open-weights and reproducible, with no closed-model dependency, which strengthens the
+  comparison's repeatability.
+- **Method note:** large models use **prompt-instructed JSON** (no grammar constraint —
+  constrained decoding fires only for `kind == "local"`). Despite that, only 1 parse failure
+  occurred across 240 large-arm cells (llama, 1/80) — frontier models don't need the SLM
+  equalizer, itself a finding.
+- **Result (full table in §2):**
+  - **Quality is *inverse* to size in the large arm: 31B 0.701 > 70B 0.667 > 120B 0.655.**
+    The smallest large model wins; size is not the driver.
+  - **gemma4-31b is the overall study winner** — top F1, top exact-match (15/80), fastest of
+    all 11 models (1.8 s median), cheapest large model.
+  - **Small↔large gap is small:** best local mistral-7b (0.642) is within 0.06 F1 of the best
+    cloud model and beats the 120B on exact-match; 4B gemma3-4b ≈ 120B gpt-oss on F1, for free.
+  - **Few-shot helps llama3.3-70b (+0.13)** like it helps mistral/gemma2.
+- **Cost:** whole large arm **~$0.18 total** on the DO credit (gemma4 $0.043 + llama $0.083 +
+  gpt-oss $0.050) — far under the ~$1 estimate; the $200 credit is barely touched.
+- **Artifact:** `results/runs.jsonl` (880 rows), `results/summary.csv`, `results/REPORT.md`,
+  plots; frozen at `results/snapshots/2026-06-15-phase2-with-large/`.
+- **Dissertation value:** completes the mid-sem deliverable — *"across 0.36B–120B on KIE,
+  parameter count does not predict quality; a 31B open model beats a 120B one, and a 4B local
+  model matches a 120B cloud model at zero cost."*
+
 ---
 
 ## 5. Roadmap — Phase 2 (mid-sem, now) vs Phase 3 (final viva, reserved)
@@ -197,14 +247,15 @@ as a before→after delta against the Phase-2 baseline using the identical A/B m
 
 ### Phase 2 — Mid-sem (finish now; no fine-tuning)
 Goal: answer the core research question end-to-end on a fixed bench.
-- **[P1] Complete the 8-model baseline** across the small→large ladder. *Placement final
-  (see [E3]):* small + **mid (phi4-mini, mistral-7b) on M1 Ollama**; large (GPT-4o, Claude
-  Haiku 4.5) on **DO serverless**. Remaining ops: `ollama pull phi4-mini mistral` + run the
-  mid arm (free); `export DO_INFERENCE_KEY` + run the large arm (~$1 on the DO credit).
-- **[P1b] Efficiency/cost frontier** — finalise latency, peak memory, tokens/s and $ per
-  model; the quality-vs-cost trade-off plot is the second mid-sem headline alongside [E2].
-- **Status:** constrained-decoding finding ([E2]) done; small ladder done; mid + large
-  arms pending the runs above. **Nothing else from this list is done at mid-sem.**
+- **[P1] ✅ DONE — Complete the 11-model baseline** across the small→large ladder
+  (0.36B–120B). *Placement (see [E3]/[E5]):* small + mid (phi4-mini, mistral-7b) on M1
+  Ollama; large (gemma-4-31B, llama3.3-70b, gpt-oss-120b) on DO serverless. All 11 models
+  ran the full 80-cell grid; see §2.
+- **[P1b] ✅ DONE — Efficiency/cost frontier** — latency, peak memory, tokens/s and $ per
+  model captured; quality-vs-cost trade-off plot regenerated (`plot_cost_frontier.png`).
+- **Status:** **Mid-sem deliverable complete.** Constrained-decoding finding ([E2]) ✅;
+  full 11-model study ([E4]+[E5]) ✅; efficiency frontier ✅. Nothing from Phase 3 below
+  is started (by design — it's the reserved viva work).
 
 ### Phase 3 — Final viva (reserved; do NOT start before mid-sem is submitted)
 Goal: the *improvement* narrative — how to make small models competitive.

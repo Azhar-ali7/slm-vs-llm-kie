@@ -96,12 +96,16 @@ models:
   # inference (pay-per-token on the $200 credit; no GPU droplet, no idle billing).
   - id: frontier-llm
     type: do_serverless
-    do_model: frontier-llm            # -> api.digitalocean.models.frontier-llm (GPT-4o)
-    params_b: null                    # plotted separately (size unknown/closed-proxy)
+    do_model: frontier-llm            # -> api.digitalocean.models (openai-gpt-oss-120b)
+    params_b: 120.0
   - id: large-open-llm
     type: do_serverless
-    do_model: large-open-llm          # -> api.digitalocean.models.large-open-llm (Claude Haiku 4.5)
-    params_b: null                    # closed-proxy; size unknown
+    do_model: large-open-llm          # -> api.digitalocean.models (llama3.3-70b-instruct)
+    params_b: 70.0
+  - id: gemma4-31b
+    type: do_serverless
+    do_model: gemma4-31b              # -> api.digitalocean.models (gemma-4-31B-it)
+    params_b: 31.0                    # extends the Gemma scaling curve 1B->31B
 
 # ----------------------------------------------------------------------------
 # Local model runtime (Ollama on M1 / 8GB unified memory)
@@ -138,15 +142,21 @@ api:
     request_timeout_s: 60
     models:
       # model = DigitalOcean catalog model ID. Prices USD per 1M tokens
-      # (set from the DO pricing page; used only for the cost plot).
+      # (estimates from the DO pricing page; used only for the cost plot).
+      # NOTE: GPT-4o / Claude are Tier-3+ on DO; this account is Tier-1/2 so the
+      # large arm uses DO-hosted OPEN models (also more reproducible). [E5]
       frontier-llm:
-        model: "openai-gpt-4o"
-        price_in: 2.50
-        price_out: 10.00
+        model: "openai-gpt-oss-120b"
+        price_in: 0.20
+        price_out: 0.60
       large-open-llm:
-        model: "anthropic-claude-haiku-4.5"
-        price_in: 1.00
-        price_out: 5.00
+        model: "llama3.3-70b-instruct"
+        price_in: 0.65
+        price_out: 0.65
+      gemma4-31b:
+        model: "gemma-4-31B-it"
+        price_in: 0.30
+        price_out: 0.30
 
   # --- Azure OpenAI (GPT models only) -------------------------------------
   azure:
