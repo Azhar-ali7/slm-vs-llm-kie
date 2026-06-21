@@ -50,59 +50,102 @@ conditions:
                           # -> bounded context for small local models & Azure cost)
 
 # ----------------------------------------------------------------------------
-# Models — locked set. type: local (Ollama, free) | api (Azure, billed).
+# Models — locked set. type: local (Ollama) | do_serverless (DigitalOcean, billed).
 # Ordered smallest -> largest so an 8GB OOM on a big model never blocks the
 # small-model results already written. params_b is used for the F1-vs-size plot.
+#
+# hosted_price (local models): USD per 1M tokens [low, high] it would cost to
+# RENT this model on a commercial endpoint. Local self-hosting on the M1 has no
+# per-token bill, but "$0" misrepresents the economics, so the cost figure uses
+# this market band (token counts are real, recorded per run). Bands are tiered
+# by size from June-2026 provider rates: sub-2B models have no paid endpoint at
+# all (priced at the cheapest open-model tier, ~$0.01-0.05/M); gemma3-4b is
+# DeepInfra's $0.05/$0.10; phi-4 ~$0.07/$0.14; mistral-7b v0.3 ~$0.14/$0.20.
 # ----------------------------------------------------------------------------
 models:
   - id: smollm2-360m
+    display: SmolLM2-360M
     type: local
     tag: smollm2:360m
     params_b: 0.36
+    hosted_price: {in: [0.01, 0.05], out: [0.02, 0.10]}   # no paid endpoint; cheapest open tier
   - id: qwen2.5-0.5b
+    display: Qwen2.5-0.5B
     type: local
     tag: qwen2.5:0.5b
     params_b: 0.5
+    hosted_price: {in: [0.01, 0.05], out: [0.02, 0.10]}   # no paid endpoint; cheapest open tier
   - id: llama3.2-1b
+    display: Llama-3.2-1B
     type: local
     tag: llama3.2:1b
     params_b: 1.0
+    hosted_price: {in: [0.027, 0.10], out: [0.10, 0.20]}  # OpenRouter 0.027/0.20; Bedrock 0.10/0.10
   - id: gemma3-1b
+    display: Gemma-3-1B
     type: local
     tag: gemma3:1b
     params_b: 1.0
+    hosted_price: {in: [0.02, 0.05], out: [0.04, 0.10]}   # no paid endpoint; cheapest open tier
   - id: gemma2-2b
+    display: Gemma-2-2B
     type: local
     tag: gemma2:2b
     params_b: 2.0
+    hosted_price: {in: [0.02, 0.07], out: [0.04, 0.14]}   # 2B tier (rarely hosted)
   - id: gemma3-4b
+    display: Gemma-3-4B
     type: local
     tag: gemma3:4b
     params_b: 4.0
+    hosted_price: {in: [0.05, 0.10], out: [0.10, 0.15]}   # DeepInfra gemma3-4b 0.05/0.10
+  # Gemma 4 edge (E-series): "effective" params via Per-Layer Embeddings — E2B ~2B /
+  # E4B ~4B memory footprint. QAT quant (Google-recommended) to fit the 8GB M1
+  # (default e2b/e4b tags are 7.2/9.6GB — too large). Enables a same-size generational
+  # comparison: gemma2-2b vs gemma4-e2b, and gemma3-4b vs gemma4-e4b.
+  - id: gemma4-e2b
+    display: Gemma-4-E2B
+    type: local
+    tag: gemma4:e2b-it-qat
+    params_b: 2.0
+    hosted_price: {in: [0.02, 0.07], out: [0.04, 0.14]}   # ~2B tier (no public endpoint)
+  - id: gemma4-e4b
+    display: Gemma-4-E4B
+    type: local
+    tag: gemma4:e4b-it-qat
+    params_b: 4.0
+    hosted_price: {in: [0.05, 0.10], out: [0.10, 0.15]}   # ~4B tier (no public endpoint)
   # Mid arm (phi4-mini, mistral-7b) runs locally on the M1 via Ollama — same
   # constrained-decoding stack as the small models (decided in FINDINGS [E3]).
   # foundry_model kept only as a reference label.
   - id: phi4-mini
+    display: Phi-4-mini
     type: local
     tag: phi4-mini
     foundry_model: phi4-mini
     params_b: 3.8
+    hosted_price: {in: [0.05, 0.10], out: [0.10, 0.14]}   # Phi-4 family ~0.07/0.14 (DeepInfra)
   - id: mistral-7b
+    display: Mistral-7B
     type: local
     tag: mistral
     foundry_model: mistral
     params_b: 7.0
+    hosted_price: {in: [0.05, 0.15], out: [0.10, 0.20]}   # Mistral-7B v0.3 0.14/0.20; Nemo tier low
   # Large arm = frontier commercial models, served via DigitalOcean serverless
   # inference (pay-per-token on the $200 credit; no GPU droplet, no idle billing).
   - id: frontier-llm
+    display: GPT-OSS-120B
     type: do_serverless
     do_model: frontier-llm            # -> api.digitalocean.models (openai-gpt-oss-120b)
     params_b: 120.0
   - id: large-open-llm
+    display: Llama-3.3-70B
     type: do_serverless
     do_model: large-open-llm          # -> api.digitalocean.models (llama3.3-70b-instruct)
     params_b: 70.0
   - id: gemma4-31b
+    display: Gemma-4-31B
     type: do_serverless
     do_model: gemma4-31b              # -> api.digitalocean.models (gemma-4-31B-it)
     params_b: 31.0                    # extends the Gemma scaling curve 1B->31B

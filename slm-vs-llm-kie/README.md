@@ -101,8 +101,12 @@ Fallback order if anything is flaky: `--replay` → `--live --local-only` → `-
 
 `make_plots.py` produces everything you need to paste into your own report:
 `results/summary.csv`, `results/REPORT.md` (tables + auto-findings), the four
-result plots, and `report/figures/` (architecture + pipeline diagrams). No
-document is auto-generated — write the report yourself.
+result plots, and `report/figures/` (architecture + pipeline diagrams).
+
+`scripts/make_report_doc.py` assembles the BITS mid-semester report as a Word
+document (`report/Mid_Sem_Report.docx`) in the prescribed format. The prose is
+hand-written; the script lays it out and pulls the result tables live from
+`results/runs.jsonl`, so re-running it refreshes the numbers.
 
 ## Tests
 

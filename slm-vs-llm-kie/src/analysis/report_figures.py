@@ -53,7 +53,7 @@ def architecture_diagram(out: Path) -> Path:
         "Data layer\n(loaders, gt)",
         "Preprocess\n→ simple JSON",
         "Prompt builder\n(schema + JSON)",
-        "Model registry\n(Ollama / Azure)",
+        "Model registry\n(Ollama / DigitalOcean)",
         "Parse\n(JSON + validate)",
         "Metrics\n(P/R/F1, exact)",
         "Efficiency\n(latency/mem/cost)",
