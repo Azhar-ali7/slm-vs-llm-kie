@@ -77,11 +77,25 @@ def per_model(df: pd.DataFrame, cfg: dict[str, Any]) -> pd.DataFrame:
     for model_id, g in df.groupby("model_id"):
         micro = _micro(g)
         m = meta.get(model_id, {})
+        # Cost-per-doc range from REAL mean token counts × the model's price band.
+        # Billed models: low == high (one real rate). Local models: a market band
+        # (what renting them would cost) — see model_meta / config hosted_price.
+        pt = g["prompt_tokens"].dropna().mean() or 0.0
+        ct = g["completion_tokens"].dropna().mean() or 0.0
+        cost_low = (pt * m.get("price_in_low", 0.0) + ct * m.get("price_out_low", 0.0)) / 1e6
+        cost_high = (pt * m.get("price_in_high", 0.0) + ct * m.get("price_out_high", 0.0)) / 1e6
+        # F1 split by shot mode — the pooled f1_macro averages the two and hides
+        # that few-shot helps the larger models but hurts several small ones.
+        zs = g[g["shot_mode"] == "zero_shot"]["f1"]
+        fs = g[g["shot_mode"] == "few_shot"]["f1"]
         out.append({
             "model_id": model_id,
+            "display_name": m.get("display", model_id),
             "model_type": g["model_type"].iloc[0],
             "params_b": m.get("params_b"),
             "f1_macro": round(g["f1"].mean(), 4),
+            "f1_zero_shot": round(zs.mean(), 4) if len(zs) else None,
+            "f1_few_shot": round(fs.mean(), 4) if len(fs) else None,
             "f1_micro": micro["f1"],
             "precision": micro["precision"],
             "recall": micro["recall"],
@@ -90,6 +104,9 @@ def per_model(df: pd.DataFrame, cfg: dict[str, Any]) -> pd.DataFrame:
             "peak_mem_mb": round(g["peak_mem_mb"].dropna().mean(), 1)
             if g["peak_mem_mb"].notna().any() else None,
             "cost_usd_per_doc": round(g["cost_usd"].mean(), 6),
+            "cost_low_per_doc": round(cost_low, 6),
+            "cost_high_per_doc": round(cost_high, 6),
+            "cost_mid_per_doc": round((cost_low + cost_high) / 2, 6),
             "parse_fail_rate": round(g["parse_failed"].mean(), 4),
         })
     df_out = pd.DataFrame(out)

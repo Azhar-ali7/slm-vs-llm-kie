@@ -7,6 +7,7 @@ M1 / 8GB notes:
 """
 from __future__ import annotations
 
+import os
 import threading
 import time
 from typing import Any
@@ -73,7 +74,9 @@ class OllamaRunner(ModelRunner):
     def __init__(self, model_id: str, tag: str, ollama_cfg: dict[str, Any]):
         super().__init__(model_id=model_id, kind="local")
         self.tag = tag
-        self.host = ollama_cfg["host"].rstrip("/")
+        # OLLAMA_HOST env wins over config so a remote droplet can be targeted
+        # without editing (and dirtying) the committed config.yaml.
+        self.host = os.environ.get("OLLAMA_HOST", ollama_cfg["host"]).rstrip("/")
         self.temperature = ollama_cfg.get("temperature", 0.0)
         self.num_predict = ollama_cfg.get("num_predict", 512)
         self.seed = ollama_cfg.get("seed", 42)
@@ -97,7 +100,7 @@ class OllamaRunner(ModelRunner):
                 f"Ollama model '{self.tag}' not found. Pull it: `ollama pull {self.tag}`."
             )
 
-    def run(self, prompt: str) -> RunResult:
+    def run(self, prompt: str, response_format: dict | None = None) -> RunResult:
         sampler = _OllamaMemSampler(self.mem_interval)
         payload = {
             "model": self.tag,
@@ -110,6 +113,8 @@ class OllamaRunner(ModelRunner):
                 "seed": self.seed,
             },
         }
+        if response_format is not None:
+            payload["format"] = response_format  # constrained JSON decoding
         sampler.start()
         start = time.perf_counter()
         try:

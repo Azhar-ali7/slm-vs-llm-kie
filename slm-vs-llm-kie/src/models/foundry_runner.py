@@ -73,7 +73,7 @@ class FoundryRunner(ModelRunner):
             )
         return self._client
 
-    def run(self, prompt: str) -> RunResult:
+    def run(self, prompt: str, response_format: dict | None = None) -> RunResult:
         reasons = self._missing_reasons()
         if reasons:
             return RunResult(text="", latency_s=0.0, error="config: " + "; ".join(reasons))

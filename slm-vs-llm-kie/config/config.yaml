@@ -7,7 +7,6 @@ seed: 42
 
 paths:
   data_raw: data/raw
-  data_processed: data/processed
   results: results
   runs_jsonl: results/runs.jsonl
   summary_csv: results/summary.csv
@@ -17,7 +16,7 @@ paths:
   report_dir: report
 
 # ----------------------------------------------------------------------------
-# Datasets — pluggable. Add a loader in src/data/loaders.py + an entry here.
+# Datasets — pluggable.
 # ----------------------------------------------------------------------------
 datasets:
   sroie:
@@ -44,58 +43,114 @@ test_set:
 conditions:
   shot_modes: [zero_shot, few_shot]
   input_variants: [lines_only, lines_plus_kv]
-  few_shot_k: 2            # examples drawn from TRAIN split, never the test set
-  n_samples: 1            # repeats per cell; raise to 2 only after a clean pilot
+  few_shot_k: 2            # examples drawn from TRAIN split, 
+  n_samples: 1            # repeats per cell; can be raised to 2 only after a clean pilot
   max_input_lines: 120    # cap document lines in the prompt (long Kleister reports
                           # -> bounded context for small local models & Azure cost)
 
 # ----------------------------------------------------------------------------
-# Models — locked set. type: local (Ollama, free) | api (Azure, billed).
+# Models — locked set. type: local (Ollama) | do_serverless (DigitalOcean, billed).
 # Ordered smallest -> largest so an 8GB OOM on a big model never blocks the
 # small-model results already written. params_b is used for the F1-vs-size plot.
+#
+# hosted_price (local models): USD per 1M tokens [low, high] it would cost to
+# RENT this model on a commercial endpoint. Local self-hosting on the M1 has no
+# per-token bill, but "$0" misrepresents the economics, so the cost figure uses
+# this market band (token counts are real, recorded per run). Bands are tiered
+# by size from June-2026 provider rates: sub-2B models have no paid endpoint at
+# all (priced at the cheapest open-model tier, ~$0.01-0.05/M); gemma3-4b is
+# DeepInfra's $0.05/$0.10; phi-4 ~$0.07/$0.14; mistral-7b v0.3 ~$0.14/$0.20.
 # ----------------------------------------------------------------------------
 models:
   - id: smollm2-360m
+    display: SmolLM2-360M
     type: local
     tag: smollm2:360m
     params_b: 0.36
+    hosted_price: {in: [0.01, 0.05], out: [0.02, 0.10]}   # no paid endpoint; cheapest open tier
   - id: qwen2.5-0.5b
+    display: Qwen2.5-0.5B
     type: local
     tag: qwen2.5:0.5b
     params_b: 0.5
+    hosted_price: {in: [0.01, 0.05], out: [0.02, 0.10]}   # no paid endpoint; cheapest open tier
   - id: llama3.2-1b
+    display: Llama-3.2-1B
     type: local
     tag: llama3.2:1b
     params_b: 1.0
+    hosted_price: {in: [0.027, 0.10], out: [0.10, 0.20]}  # OpenRouter 0.027/0.20; Bedrock 0.10/0.10
+  - id: gemma3-1b
+    display: Gemma-3-1B
+    type: local
+    tag: gemma3:1b
+    params_b: 1.0
+    hosted_price: {in: [0.02, 0.05], out: [0.04, 0.10]}   # no paid endpoint; cheapest open tier
   - id: gemma2-2b
+    display: Gemma-2-2B
     type: local
     tag: gemma2:2b
     params_b: 2.0
-  # No OpenRouter credits -> only ":free" models are usable, and OpenRouter has
-  # no free Phi or Mistral-7B. So phi4-mini & mistral run LOCALLY on Ollama
-  # (laptop or a DigitalOcean droplet), and the two LARGE models use OpenRouter
-  # FREE slugs ($0, rate-limited ~50 req/day without credit).
+    hosted_price: {in: [0.02, 0.07], out: [0.04, 0.14]}   # 2B tier (rarely hosted)
+  - id: gemma3-4b
+    display: Gemma-3-4B
+    type: local
+    tag: gemma3:4b
+    params_b: 4.0
+    hosted_price: {in: [0.05, 0.10], out: [0.10, 0.15]}   # DeepInfra gemma3-4b 0.05/0.10
+  # Gemma 4 edge (E-series): "effective" params via Per-Layer Embeddings — E2B ~2B /
+  # E4B ~4B memory footprint. QAT quant (Google-recommended) to fit the 8GB M1
+  # (default e2b/e4b tags are 7.2/9.6GB — too large). Enables a same-size generational
+  # comparison: gemma2-2b vs gemma4-e2b, and gemma3-4b vs gemma4-e4b.
+  - id: gemma4-e2b
+    display: Gemma-4-E2B
+    type: local
+    tag: gemma4:e2b-it-qat
+    params_b: 2.0
+    hosted_price: {in: [0.02, 0.07], out: [0.04, 0.14]}   # ~2B tier (no public endpoint)
+  - id: gemma4-e4b
+    display: Gemma-4-E4B
+    type: local
+    tag: gemma4:e4b-it-qat
+    params_b: 4.0
+    hosted_price: {in: [0.05, 0.10], out: [0.10, 0.15]}   # ~4B tier (no public endpoint)
+  # Mid arm (phi4-mini, mistral-7b) runs locally on the M1 via Ollama — same
+  # constrained-decoding stack as the small models (decided in FINDINGS [E3]).
+  # foundry_model kept only as a reference label.
   - id: phi4-mini
+    display: Phi-4-mini
     type: local
     tag: phi4-mini
+    foundry_model: phi4-mini
     params_b: 3.8
-    large: true                       # ~3GB, tight on 8GB -> --skip-large or droplet
+    hosted_price: {in: [0.05, 0.10], out: [0.10, 0.14]}   # Phi-4 family ~0.07/0.14 (DeepInfra)
   - id: mistral-7b
+    display: Mistral-7B
     type: local
     tag: mistral
+    foundry_model: mistral
     params_b: 7.0
-    large: true                       # ~5GB, will swap on 8GB -> droplet/opt-in
+    hosted_price: {in: [0.05, 0.15], out: [0.10, 0.20]}   # Mistral-7B v0.3 0.14/0.20; Nemo tier low
+  # Large arm = frontier commercial models, served via DigitalOcean serverless
+  # inference (pay-per-token on the $200 credit; no GPU droplet, no idle billing).
   - id: frontier-llm
-    type: openrouter
-    openrouter_model: frontier-llm    # free strong model (Qwen3-Next-80B)
-    params_b: null                    # plotted separately (size unknown/closed-proxy)
+    display: GPT-OSS-120B
+    type: do_serverless
+    do_model: frontier-llm            # -> api.digitalocean.models (openai-gpt-oss-120b)
+    params_b: 120.0
   - id: large-open-llm
-    type: openrouter
-    openrouter_model: large-open-llm  # free Llama-3.3-70B
+    display: Llama-3.3-70B
+    type: do_serverless
+    do_model: large-open-llm          # -> api.digitalocean.models (llama3.3-70b-instruct)
     params_b: 70.0
+  - id: gemma4-31b
+    display: Gemma-4-31B
+    type: do_serverless
+    do_model: gemma4-31b              # -> api.digitalocean.models (gemma-4-31B-it)
+    params_b: 31.0                    # extends the Gemma scaling curve 1B->31B
 
 # ----------------------------------------------------------------------------
-# Local model runtime (Ollama on M1 / 8GB unified memory)
+# Local model runtime Ollama
 # ----------------------------------------------------------------------------
 ollama:
   host: http://localhost:11434
@@ -104,14 +159,46 @@ ollama:
   seed: 42
   keep_alive: "5m"          # keep model loaded across its batch (small models);
                             # set 0 to unload after each call (safer for 7B on 8GB)
+  structured_output: true   # constrained JSON decoding (forces valid JSON w/ all
+                            # fields) — fixes parse failures, boosts small-model F1
   request_timeout_s: 600    # big models on 8GB can be slow; be generous
   mem_sample_interval_s: 0.25   # how often to poll ollama-server RSS during a call
 
 # ----------------------------------------------------------------------------
-# API models — Azure OpenAI
+# API models — ACTIVE cloud path: DigitalOcean serverless inference
+# (Azure / OpenRouter blocks kept below for reference but unused.)
 # ----------------------------------------------------------------------------
 api:
-  provider: azure_openai    # azure_openai | anthropic | openai
+  provider: azure_openai    # azure_openai | anthropic | openai (only affects type:api)
+
+  # --- DigitalOcean serverless inference (ACTIVE large arm) ----------------
+  # OpenAI-compatible (https://inference.do-ai.run/v1), single "model access
+  # key" (env DO_INFERENCE_KEY, created in DO Control Panel). Pay-per-token on
+  # the $200 credit — no GPU droplet, no idle/hourly billing. Hosts GPT-4o and
+  # Claude Haiku 4.5 directly. Whole-grid (80 cells) cost ~$1 total.
+  digitalocean:
+    base_url: "https://inference.do-ai.run/v1"
+    api_key_env: DO_INFERENCE_KEY
+    temperature: 0.0
+    max_tokens: 512
+    request_timeout_s: 60
+    models:
+      # model = DigitalOcean catalog model ID. Prices USD per 1M tokens
+      # (estimates from the DO pricing page; used only for the cost plot).
+      # NOTE: GPT-4o / Claude are Tier-3+ on DO; this account is Tier-1/2 so the
+      # large arm uses DO-hosted OPEN models (also more reproducible). [E5]
+      frontier-llm:
+        model: "openai-gpt-oss-120b"
+        price_in: 0.20
+        price_out: 0.60
+      large-open-llm:
+        model: "llama3.3-70b-instruct"
+        price_in: 0.65
+        price_out: 0.65
+      gemma4-31b:
+        model: "gemma-4-31B-it"
+        price_in: 0.30
+        price_out: 0.30
 
   # --- Azure OpenAI (GPT models only) -------------------------------------
   azure:
@@ -170,18 +257,18 @@ api:
     request_timeout_s: 60
     title: "slm-vs-llm-kie"
     models:
-      # FREE slugs ($0) because the account has no credit. Free tier is
-      # rate-limited (~50 requests/day without >=$10 credit). To run faster or
-      # use stronger paid models, add credit and swap to paid slugs, e.g.
-      # frontier -> openai/gpt-4o-mini (0.15/0.60), large-open -> .../llama-3.3-70b-instruct (0.10/0.32).
+      # LARGE ARM = frontier commercial models (the "large LLM" comparison),
+      # both served via OpenRouter's OpenAI-compatible API. Needs >=$10 credit
+      # on the account (also lifts the free-tier ~50 req/day rate limit).
+      # Prices are USD per 1M tokens; whole-grid (80 cells) cost is ~$1 total.
       frontier-llm:
-        model: "qwen/qwen3-next-80b-a3b-instruct:free"
-        price_in: 0.0
-        price_out: 0.0
+        model: "openai/gpt-4o"
+        price_in: 2.50
+        price_out: 10.00
       large-open-llm:
-        model: "meta-llama/llama-3.3-70b-instruct:free"
-        price_in: 0.0
-        price_out: 0.0
+        model: "anthropic/claude-haiku-4.5"
+        price_in: 1.00
+        price_out: 5.00
       # Paid Phi/Mistral exist but need credit; phi4-mini & mistral run on Ollama:
       #   phi4-mini: {model: microsoft/phi-4-mini-instruct, price_in: 0.08, price_out: 0.35}
       #   mistral:   {model: mistralai/ministral-8b-2512,   price_in: 0.15, price_out: 0.15}
@@ -199,7 +286,7 @@ run:
   retry_backoff_s: 2
 
 # ----------------------------------------------------------------------------
-# Report metadata (BITS Mid-Sem .docx)
+# Report metadata (.docx)
 # ----------------------------------------------------------------------------
 report:
   title: "SLM vs LLM for Key Information Extraction from Financial Documents"

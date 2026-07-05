@@ -1,9 +1,13 @@
-"""OpenRouter runner — one OpenAI-compatible API for many models.
+"""DigitalOcean serverless inference runner — OpenAI-compatible.
 
-OpenRouter (https://openrouter.ai/api/v1) aggregates Phi, Mistral, Llama, GPT,
-Claude, etc. behind the OpenAI chat-completions API, so a single key + the openai
-SDK runs every cloud model. Cheaper/simpler than per-provider Azure deployments
-when you already have an OPENROUTER_API_KEY.
+DigitalOcean's GenAI Platform serverless inference (https://inference.do-ai.run/v1)
+serves open models (Llama, Qwen, Mistral) *and* frontier models (OpenAI GPT,
+Anthropic Claude) behind the OpenAI chat-completions API with a single
+"model access key". It is pay-per-token (no idle/hourly charge), so it is the
+safe way to run the large arm on the DigitalOcean $200 credit without a GPU
+droplet to provision and remember to destroy.
+
+Auth: Authorization: Bearer <model access key>  (env DO_INFERENCE_KEY).
 """
 from __future__ import annotations
 
@@ -14,22 +18,19 @@ from typing import Any
 from src.models.base import ModelRunner, RunResult
 
 
-class OpenRouterRunner(ModelRunner):
-    def __init__(self, model_id: str, openrouter_model_key: str, api_cfg: dict[str, Any]):
+class DigitalOceanRunner(ModelRunner):
+    def __init__(self, model_id: str, do_model_key: str, api_cfg: dict[str, Any]):
         super().__init__(model_id=model_id, kind="api")
-        orc = api_cfg["openrouter"]
-        mc = orc["models"][openrouter_model_key]
-        self.base_url = orc.get("base_url", "https://openrouter.ai/api/v1")
-        self.api_key_env = orc["api_key_env"]
+        doc = api_cfg["digitalocean"]
+        mc = doc["models"][do_model_key]
+        self.base_url = doc.get("base_url", "https://inference.do-ai.run/v1")
+        self.api_key_env = doc.get("api_key_env", "DO_INFERENCE_KEY")
         self.model = mc["model"]
-        self.temperature = orc.get("temperature", 0.0)
-        self.max_tokens = orc.get("max_tokens", 512)
-        self.timeout_s = orc.get("request_timeout_s", 60)
+        self.temperature = doc.get("temperature", 0.0)
+        self.max_tokens = doc.get("max_tokens", 512)
+        self.timeout_s = doc.get("request_timeout_s", 60)
         self.price_in = mc.get("price_in", 0.0)
         self.price_out = mc.get("price_out", 0.0)
-        # Optional OpenRouter ranking headers.
-        self.referer = orc.get("referer", "https://github.com/Azhar-ali7")
-        self.title = orc.get("title", "slm-vs-llm-kie")
         self._client = None
 
     def _missing_reasons(self) -> list[str]:
@@ -39,7 +40,7 @@ class OpenRouterRunner(ModelRunner):
         if not self.model or self.model.startswith("<"):
             reasons.append(
                 f"model for '{self.model_id}' is a placeholder ({self.model!r}); "
-                f"set it in config.yaml api.openrouter.models"
+                f"set it in config.yaml api.digitalocean.models"
             )
         return reasons
 
@@ -47,7 +48,7 @@ class OpenRouterRunner(ModelRunner):
         reasons = self._missing_reasons()
         if reasons:
             raise RuntimeError(
-                f"OpenRouter model '{self.model_id}' not configured: " + "; ".join(reasons)
+                f"DigitalOcean model '{self.model_id}' not configured: " + "; ".join(reasons)
             )
 
     def _get_client(self):
@@ -73,7 +74,6 @@ class OpenRouterRunner(ModelRunner):
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 timeout=self.timeout_s,
-                extra_headers={"HTTP-Referer": self.referer, "X-Title": self.title},
             )
             latency = time.perf_counter() - start
             text = resp.choices[0].message.content or ""

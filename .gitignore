@@ -1,3 +1,6 @@
+# Codegraph runtime files
+.codegraph/
+
 # macOS resource forks / metadata (common on USB/exFAT volumes)
 ._*
 .DS_Store

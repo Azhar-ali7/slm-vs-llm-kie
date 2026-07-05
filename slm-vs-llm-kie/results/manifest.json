@@ -1,25 +1,13 @@
 {
-  "timestamp": "2026-06-12T04:38:42.383653+00:00",
+  "timestamp": "2026-06-15T16:40:54.362525+00:00",
   "pilot": false,
   "seed": 42,
   "python": "3.12.4",
   "platform": "macOS-15.5-arm64-arm-64bit",
   "models": [
     {
-      "id": "smollm2-360m",
-      "kind": "local"
-    },
-    {
-      "id": "qwen2.5-0.5b",
-      "kind": "local"
-    },
-    {
-      "id": "llama3.2-1b",
-      "kind": "local"
-    },
-    {
-      "id": "gemma2-2b",
-      "kind": "local"
+      "id": "gemma4-31b",
+      "kind": "api"
     }
   ],
   "n_docs": 20,
