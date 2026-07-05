@@ -61,9 +61,13 @@ def _show_document(record: dict, simple_json: dict) -> None:
 
 
 def _model_table(model_id: str, gold: dict, pred: dict | None, schema: dict,
-                 latency_s, cost_usd, f1) -> Table:
+                 latency_s, cost_usd, f1, verbose: bool = False) -> Table:
     score = score_document(gold, pred, schema)
     head = f"[bold]{model_id}[/bold]  F1={f1:.2f}  lat={latency_s}s  ${cost_usd:.5f}"
+    if verbose:
+        head += (f"\n[dim]P={score['precision']:.2f}  R={score['recall']:.2f}  "
+                 f"exact={score['exact_match_fields']}/{score['n_fields']} fields"
+                 f"{'  (all correct)' if score['exact_match_doc'] else ''}[/dim]")
     table = Table(title=head, title_justify="left", expand=False)
     table.add_column("Field", style="cyan", no_wrap=True)
     table.add_column("Gold")
@@ -77,7 +81,24 @@ def _model_table(model_id: str, gold: dict, pred: dict | None, schema: dict,
     return table
 
 
-def replay(cfg: dict, doc_id: str | None, models: list[str] | None) -> None:
+def _detail_panel(model_id: str, *, shot_mode: str, input_variant: str,
+                  prompt_tokens=None, completion_tokens=None, peak_mem_mb=None,
+                  raw_text: str | None = None) -> Panel:
+    """Under-the-hood detail for --verbose: condition, tokens, memory, raw output."""
+    parts = [
+        f"[bold]condition[/bold]  shot={shot_mode}  input={input_variant}",
+        f"[bold]tokens[/bold]     prompt={prompt_tokens}  completion={completion_tokens}",
+        f"[bold]peak mem[/bold]   {peak_mem_mb} MB",
+    ]
+    if raw_text is not None:
+        shown = raw_text if len(raw_text) <= 800 else raw_text[:800] + " …[truncated]"
+        parts.append(f"[bold]raw output[/bold]\n[dim]{shown or '(empty)'}[/dim]")
+    return Panel("\n".join(parts), title=f"[cyan]{model_id} — detail[/cyan]",
+                 style="dim", expand=False)
+
+
+def replay(cfg: dict, doc_id: str | None, models: list[str] | None,
+           verbose: bool = False) -> None:
     rows = load_rows(resolve_path(cfg, cfg["paths"]["runs_jsonl"]))
     if not rows:
         console.print("[red]No results in runs.jsonl.[/red] Seed them first, e.g.:\n"
@@ -105,7 +126,16 @@ def replay(cfg: dict, doc_id: str | None, models: list[str] | None) -> None:
         return
     for model_id, r in seen.items():
         console.print(_model_table(model_id, gold, r.get("predicted_json"), schema,
-                                   r.get("latency_s"), r.get("cost_usd") or 0.0, r.get("f1") or 0.0))
+                                   r.get("latency_s"), r.get("cost_usd") or 0.0,
+                                   r.get("f1") or 0.0, verbose=verbose))
+        if verbose:
+            console.print(_detail_panel(
+                model_id, shot_mode=r.get("shot_mode", "?"),
+                input_variant=r.get("input_variant", "?"),
+                prompt_tokens=r.get("prompt_tokens"),
+                completion_tokens=r.get("completion_tokens"),
+                peak_mem_mb=r.get("peak_mem_mb"),
+                raw_text=None))  # raw text not stored in runs.jsonl; show predicted JSON via table
 
 
 def _preflight_live(cfg, runners) -> list:
@@ -120,7 +150,8 @@ def _preflight_live(cfg, runners) -> list:
     return ok
 
 
-def live(cfg: dict, doc_id: str | None, models: list[str] | None, local_only: bool) -> None:
+def live(cfg: dict, doc_id: str | None, models: list[str] | None, local_only: bool,
+         verbose: bool = False, show_prompt: bool = False) -> None:
     from src.eval.efficiency import efficiency_metrics
     from src.models.registry import build_runners, model_meta
 
@@ -149,8 +180,12 @@ def live(cfg: dict, doc_id: str | None, models: list[str] | None, local_only: bo
     _show_document(record, simple_json)
 
     from src.prompts.builder import build_prompt
-    prompt = build_prompt(schema, simple_json, "zero_shot", "lines_plus_kv",
+    shot_mode, input_variant = "zero_shot", "lines_plus_kv"
+    prompt = build_prompt(schema, simple_json, shot_mode, input_variant,
                           max_lines=cfg["conditions"].get("max_input_lines"))
+    if show_prompt:
+        console.print(Panel(prompt, title="[cyan]Prompt sent to every model[/cyan]",
+                            style="dim", expand=False))
     for runner in runners:
         with console.status(f"Running {runner.model_id}…"):
             result = runner.run(prompt)
@@ -162,7 +197,13 @@ def live(cfg: dict, doc_id: str | None, models: list[str] | None, local_only: bo
             console.print(f"[red]{runner.model_id} error:[/red] {result.error}")
             continue
         console.print(_model_table(runner.model_id, gold, pred, schema,
-                                   eff["latency_s"], eff["cost_usd"], f1))
+                                   eff["latency_s"], eff["cost_usd"], f1, verbose=verbose))
+        if verbose:
+            console.print(_detail_panel(
+                runner.model_id, shot_mode=shot_mode, input_variant=input_variant,
+                prompt_tokens=result.prompt_tokens,
+                completion_tokens=result.completion_tokens,
+                peak_mem_mb=result.peak_mem_mb, raw_text=result.text))
 
 
 def main() -> None:
@@ -173,13 +214,17 @@ def main() -> None:
     ap.add_argument("--doc", default=None, help="Specific doc_id to show.")
     ap.add_argument("--models", nargs="*", default=None, help="Restrict to these model ids.")
     ap.add_argument("--local-only", action="store_true", help="(live) skip the Azure model.")
+    ap.add_argument("-v", "--verbose", action="store_true",
+                    help="Show P/R/exact-match, condition, tokens, memory, and raw output.")
+    ap.add_argument("--show-prompt", action="store_true",
+                    help="(live) print the full prompt sent to the models.")
     args = ap.parse_args()
 
     cfg = load_config()
     if args.live:
-        live(cfg, args.doc, args.models, args.local_only)
+        live(cfg, args.doc, args.models, args.local_only, args.verbose, args.show_prompt)
     else:
-        replay(cfg, args.doc, args.models)
+        replay(cfg, args.doc, args.models, args.verbose)
 
 
 if __name__ == "__main__":

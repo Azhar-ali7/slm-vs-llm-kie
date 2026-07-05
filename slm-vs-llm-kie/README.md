@@ -108,6 +108,12 @@ document (`report/Mid_Sem_Report.docx`) in the prescribed format. The prose is
 hand-written; the script lays it out and pulls the result tables live from
 `results/runs.jsonl`, so re-running it refreshes the numbers.
 
+`scripts/make_slides.py` builds the mid-semester review presentation
+(`report/SLM_vs_LLM_Mid_Sem_Review.pptx`) on the standard PowerPoint template
+(requires `python-pptx`). The slide text is hand-written; the 11-model standings
+table is pulled live from `results/runs.jsonl` and the six figures are embedded
+from disk, so re-running it keeps the deck in sync with the results.
+
 ## Tests
 
 ```bash
