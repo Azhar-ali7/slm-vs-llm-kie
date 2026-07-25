@@ -78,6 +78,10 @@ def model_meta(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
             # Human-readable name for tables/plots; config ids are generic
             # (e.g. frontier-llm -> GPT-OSS-120B). Fall back to the id.
             "display": model.get("display", model["id"]),
+            # Phase-3 fine-tuned models carry these so analysis can pair a
+            # fine-tune with its baseline for the before->after delta.
+            "finetuned": bool(model.get("finetuned", False)),
+            "base": model.get("base"),
             "price_in": 0.0,
             "price_out": 0.0,
         }

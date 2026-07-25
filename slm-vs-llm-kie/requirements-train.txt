@@ -1,0 +1,17 @@
+# Phase-3 QLoRA training dependencies — GPU / CUDA ONLY.
+#
+# These are NOT installed on the M1 (bitsandbytes/Unsloth need CUDA). They run in
+# the Kaggle T4x2 notebook (notebooks/03_qlora_finetune.ipynb), which pip-installs
+# them itself. This file is a pinned reference of that environment; do not
+# `pip install -r` it locally.
+#
+# The local/eval environment is requirements.txt (CPU, Ollama-based).
+
+unsloth==2025.6.1          # single-GPU QLoRA + GGUF export
+trl==0.9.6                 # SFTTrainer
+peft==0.11.1               # LoRA adapters
+transformers==4.44.2
+datasets==2.20.0
+bitsandbytes==0.43.1       # 4-bit quantization (CUDA)
+accelerate==0.33.0
+sentencepiece==0.2.0

@@ -124,6 +124,19 @@ models:
     foundry_model: phi4-mini
     params_b: 3.8
     hosted_price: {in: [0.05, 0.10], out: [0.10, 0.14]}   # Phi-4 family ~0.07/0.14 (DeepInfra)
+  # Phase-3 QLoRA fine-tune of phi4-mini (train split only; see docs/QLORA.md).
+  # Imported as an Ollama GGUF, so it is a normal type:local model. It only runs
+  # once you've created the tag (`ollama create phi4-mini-ft`); until then the
+  # runner skips it. Append its rows without touching the frozen baseline:
+  #   python scripts/run_eval.py --models phi4-mini-ft
+  - id: phi4-mini-ft
+    display: Phi-4-mini (fine-tuned)
+    type: local
+    tag: phi4-mini-ft
+    params_b: 3.8
+    finetuned: true
+    base: phi4-mini
+    hosted_price: {in: [0.05, 0.10], out: [0.10, 0.14]}   # same size/economics as base
   - id: mistral-7b
     display: Mistral-7B
     type: local

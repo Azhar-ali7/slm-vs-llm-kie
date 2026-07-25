@@ -1,0 +1,63 @@
+# =============================================================================
+# Phase-3 QLoRA fine-tuning config.
+#
+# Consumed by:
+#   scripts/make_train_data.py        (data build — CPU, local, reads `data:`)
+#   notebooks/03_qlora_finetune.ipynb (training — Kaggle T4x2, reads the rest)
+#
+# The eval-side single source of truth is still config/config.yaml. This file
+# holds ONLY training-specific knobs; the data builder pulls
+# `conditions.max_input_lines` / `conditions.input_variants` from config.yaml so
+# prompts stay identical to eval — do not duplicate those here.
+# =============================================================================
+
+# SFT data build (scripts/make_train_data.py) --------------------------------
+data:
+  out_path: data/train/sft.jsonl
+  datasets: [sroie, kleister_charity]
+  # Cap records per dataset to bound a first training run. Kleister train has
+  # 1729 docs; capping keeps a T4x2 session to a couple of hours. null = all.
+  # (2 input variants are emitted per record, so examples ~= 2 x records.)
+  max_per_dataset: 400
+
+# Base models to fine-tune ---------------------------------------------------
+# Start with phi4-mini only (prove the round-trip), then uncomment mistral.
+# `ollama_tag` is the NEW tag the GGUF is imported as, matching config.yaml.
+models:
+  phi4-mini-ft:
+    base_repo: "unsloth/Phi-4-mini-instruct"   # Unsloth 4-bit-ready checkpoint
+    base_ollama: phi4-mini                      # baseline tag (for the Modelfile template)
+    ollama_tag: phi4-mini-ft
+  # mistral-7b-ft:
+  #   base_repo: "unsloth/mistral-7b-instruct-v0.3-bnb-4bit"
+  #   base_ollama: mistral
+  #   ollama_tag: mistral-7b-ft
+
+# LoRA / QLoRA adapter --------------------------------------------------------
+lora:
+  r: 16
+  alpha: 16
+  dropout: 0.0            # Unsloth-optimized path prefers 0.0
+  bias: none
+  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+  use_gradient_checkpointing: unsloth
+
+# SFT trainer hyperparameters ------------------------------------------------
+sft:
+  max_seq_len: 2048       # >= longest (prompt+completion); Kleister lines capped at 120
+  load_in_4bit: true
+  epochs: 3
+  learning_rate: 2.0e-4
+  lr_scheduler: linear
+  warmup_ratio: 0.03
+  per_device_batch_size: 2
+  grad_accum_steps: 4     # effective batch 8
+  weight_decay: 0.01
+  optim: adamw_8bit
+  seed: 42                # matches config.yaml seed for reproducibility
+  train_on_responses_only: true   # mask the prompt; learn only the JSON completion
+
+# GGUF export (-> Ollama) ----------------------------------------------------
+export:
+  quants: [q4_k_m, q8_0]  # q4_k_m is the one registered in config.yaml
+  out_dir: artifacts      # notebook writes GGUF + Modelfile + zip here

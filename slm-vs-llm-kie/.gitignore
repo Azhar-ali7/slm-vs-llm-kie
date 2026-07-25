@@ -6,6 +6,10 @@
 # Data & results (large / regenerable)
 data/raw/
 data/processed/
+# Regenerable SFT data (scripts/make_train_data.py)
+data/train/
+# Phase-3 GGUF + Modelfile downloaded from Kaggle
+artifacts/
 results/runs.jsonl
 results/summary.csv
 results/*.png
