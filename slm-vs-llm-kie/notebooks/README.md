@@ -1,15 +1,19 @@
 # Notebooks — demo & walkthrough
 
-Two self-contained notebooks that visualise the study for the viva demo. Both read the
-**real** project code and data (`src/`, `data/raw/`, `results/runs.jsonl`) — no toy stubs —
-so every table and chart is the actual data the models see and produce.
+Self-contained notebooks that visualise the study. All read the **real** project code and
+data (`src/`, `data/raw/`, `results/runs.jsonl`) — no toy stubs — so every table and chart
+is the actual data the models see and produce.
 
 | Notebook | What it shows | Runtime |
 |---|---|---|
 | **`01_eda.ipynb`** | Exploratory data analysis of both datasets (SROIE + Kleister): sizes, schemas, document-length distribution, field fill rates, value formats — and how each observation justified a design decision. | instant (local data only) |
 | **`02_inference.ipynb`** | One document walked through **every stage of inference** — OCR → simple JSON → prompt → model call → parse → score → efficiency — for a local SLM (Ollama), an AWS Bedrock LLM, and offline replay. Ends with the 20-doc SLM-vs-LLM comparison. | instant in replay; live cells optional |
+| **`03_qlora_finetune.ipynb`** | **Phase-3, Kaggle T4×2.** QLoRA fine-tune of phi4-mini on the train split (Unsloth) → GGUF + Ollama Modelfile. GPU notebook; see `docs/QLORA.md`. | ~1–2 h on Kaggle GPU |
+| **`04_eda_presentation.ipynb`** | **Presentation-grade** EDA deck: the same corpus facts as a clean, projector-ready story of *observation → design decision*. | instant (local data only) |
+| **`05_demo_detailed.ipynb`** | **Maximally verbose** data→result demo: every intermediate printed for one document, then the 20-doc standings and the Phase-3 fine-tuned before→after (replay fallback until `phi4-mini-ft` exists). | instant in replay; live cells optional |
 
-Both ship **with outputs already executed**, so they render fully even before you re-run them.
+`01`, `02`, `04`, `05` ship **with outputs already executed**, so they render fully before
+you re-run them. `03` is a GPU training skeleton (run it on Kaggle).
 
 ## Run locally
 
