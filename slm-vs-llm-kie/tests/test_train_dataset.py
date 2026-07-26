@@ -81,3 +81,15 @@ def test_prompt_is_byte_identical_to_eval(examples):
 def test_zero_shot_only(examples):
     # A fine-tuned model gets no in-context exemplars.
     assert all("### Example" not in e["prompt"] for e in examples)
+
+
+def test_capped_sample_is_deterministic():
+    """The max_per_dataset cap draws a SEEDED random sample, so two independent
+    builds must pick the identical documents (reproducible dissertation record)."""
+    docs = lambda exs: {(e["dataset"], e["doc_id"]) for e in exs}
+    a = build_sft_examples(cfg, max_per_dataset=5)
+    b = build_sft_examples(cfg, max_per_dataset=5)
+    assert docs(a) == docs(b)
+    # And the cap actually samples a subset (not the whole pool), per dataset.
+    for name in _REAL:
+        assert len({d for d in docs(a) if d[0] == name}) == 5

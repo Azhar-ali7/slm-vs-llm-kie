@@ -24,6 +24,7 @@ somehow appears in the test selection.
 from __future__ import annotations
 
 import json
+import random
 from pathlib import Path
 from typing import Any
 
@@ -53,8 +54,10 @@ def build_sft_examples(
     """Return SFT examples {prompt, completion, dataset, doc_id, input_variant}.
 
     `max_lines` defaults to `conditions.max_input_lines` so prompts match eval.
-    `max_per_dataset` caps records per dataset (bounds a quick training run);
-    applied after the test-set exclusion so counts stay reproducible.
+    `max_per_dataset` caps records per dataset (bounds a quick training run) via a
+    SEEDED RANDOM SAMPLE — keyed on `cfg["seed"]`, the same seed that fixes the
+    20-doc test set — not a head slice, so the 400 are representative of the pool
+    yet fully reproducible. Applied after the test-set exclusion.
     """
     datasets = datasets or DEFAULT_DATASETS
     if input_variants is None:
@@ -69,8 +72,11 @@ def build_sft_examples(
         records = load_dataset(cfg, name, split="train")
         # Defensive: train/test files are already disjoint, but never trust that.
         records = [r for r in records if str(r["doc_id"]) not in test_ids]
-        if max_per_dataset is not None:
-            records = records[:max_per_dataset]
+        # Cap via a seeded random sample (reproducible, unbiased) — NOT a head
+        # slice, which would over-represent whatever order the loader returns.
+        if max_per_dataset is not None and len(records) > max_per_dataset:
+            rng = random.Random(cfg.get("seed", 42))
+            records = rng.sample(records, max_per_dataset)
 
         for rec in records:
             schema = schema_for_record(cfg, rec)
