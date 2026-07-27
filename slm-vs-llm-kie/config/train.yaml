@@ -44,7 +44,9 @@ lora:
 
 # SFT trainer hyperparameters ------------------------------------------------
 sft:
-  max_seq_len: 2048       # >= longest (prompt+completion); Kleister lines capped at 120
+  max_seq_len: 4096       # >= longest (prompt+completion). Kleister p99≈3.1k tok, max≈3.4k;
+                          # 2048 truncated the response off ~41% of Kleister docs (labels
+                          # all -100 -> silently dropped). 4096 keeps 100% of examples.
   load_in_4bit: true
   epochs: 3
   learning_rate: 2.0e-4
