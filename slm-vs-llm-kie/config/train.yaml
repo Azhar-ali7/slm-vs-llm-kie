@@ -15,10 +15,10 @@
 data:
   out_path: data/train/sft.jsonl
   datasets: [sroie, kleister_charity]
-  # Cap records per dataset to bound a first training run. Kleister train has
-  # 1729 docs; capping keeps a T4x2 session to a couple of hours. null = all.
-  # (2 input variants are emitted per record, so examples ~= 2 x records.)
-  max_per_dataset: 400
+  # Cap records per dataset. Run 2 (stronger config) lifts the cap to use ALL
+  # train docs (sroie 501 + kleister 1729 = 2230; ~4460 examples at 2 variants).
+  # null = all. Was 400 for the first round-trip.
+  max_per_dataset: null
 
 # Base models to fine-tune ---------------------------------------------------
 # Start with phi4-mini only (prove the round-trip), then uncomment mistral.
@@ -35,11 +35,15 @@ models:
 
 # LoRA / QLoRA adapter --------------------------------------------------------
 lora:
-  r: 16
-  alpha: 16
+  r: 64                  # Run 2: 16 -> 64 for more adapter capacity.
+  alpha: 64              # alpha = r keeps merge scaling = 1.0.
   dropout: 0.0            # Unsloth-optimized path prefers 0.0
   bias: none
-  target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+  # Phi-3/Phi-4-mini FUSE attention into qkv_proj and MLP into gate_up_proj.
+  # Run 1 used the unfused names [q_proj,k_proj,v_proj,gate_proj,up_proj,...] which
+  # matched NOTHING for those five (only o_proj + down_proj got adapters -> weak gain).
+  # These fused names cover all attention + MLP projections.
+  target_modules: [qkv_proj, o_proj, gate_up_proj, down_proj]
   use_gradient_checkpointing: unsloth
 
 # SFT trainer hyperparameters ------------------------------------------------
@@ -48,7 +52,7 @@ sft:
                           # 2048 truncated the response off ~41% of Kleister docs (labels
                           # all -100 -> silently dropped). 4096 keeps 100% of examples.
   load_in_4bit: true
-  epochs: 3
+  epochs: 5               # Run 2: 3 -> 5
   learning_rate: 2.0e-4
   lr_scheduler: linear
   warmup_ratio: 0.03
