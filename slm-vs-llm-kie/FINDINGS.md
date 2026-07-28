@@ -9,11 +9,11 @@
 - **Project:** Comparing small local LLMs (0.36B–7B, Ollama) vs large cloud LLMs on
   Key Information Extraction (KIE) from financial documents.
 - **Author:** Azhar Ali · BITS ID 2024AA05791 · AIMLCZG628T (M.Tech AI & ML)
-- **Last updated:** 2026-06-15
-- **Dissertation phases:** (1) Abstract ✅ done · (2) **Mid-sem — current** (baseline
-  small-vs-large comparison + constrained decoding) · (3) Final viva (fine-tuning &
-  recall-lift improvements, *reserved* — see §5). This document is the single running
-  record across all three.
+- **Last updated:** 2026-07-28
+- **Dissertation phases:** (1) Abstract ✅ done · (2) Mid-sem ✅ done (baseline
+  small-vs-large comparison + constrained decoding) · (3) **Final viva — started**
+  (fine-tuning & recall-lift improvements; QLoRA [P2] phi4-mini done, see [E6]). This
+  document is the single running record across all three.
 
 ---
 
@@ -235,6 +235,67 @@ Each entry: **what changed**, **why (hypothesis)**, **result (before→after)**,
   parameter count does not predict quality; a 31B open model beats a 120B one, and a 4B local
   model matches a 120B cloud model at zero cost."*
 
+### [E6] 2026-07-28 — Phase-3 [P2]: QLoRA fine-tuning of phi4-mini (before→after)
+- **What:** Fine-tuned **phi4-mini (3.8B)** with QLoRA (Unsloth, 4-bit) on the **train
+  splits only** of SROIE + Kleister-Charity, exported to a quant-matched **Q4_K_M GGUF**,
+  imported back into the Ollama harness as `phi4-mini-ft` (`type: local`), and re-ran the
+  identical frozen 20×4 grid. Two runs: Run 1 (initial config) and Run 2 (corrected, final).
+- **Hypothesis:** task-specific fine-tuning on the narrow KIE schema should substantially
+  lift a weak-but-cheap local model — phi4-mini was the *worst* mid-size local model in
+  Phase 2 (0.528) — at unchanged inference cost.
+- **Result — Run 2 (final), before→after on identical docs/conditions:**
+
+  | Metric | phi4-mini (before) | phi4-mini-ft (after) | Δ |
+  |---|---|---|---|
+  | **F1_macro** | 0.528 | **0.669** | **+0.141** |
+  | **Exact-match** | 0.125 (10/80) | **0.312 (25/80)** | **+0.187** |
+  | Parse failures | 0/80 | 0/80 | — |
+  | SROIE F1 | 0.713 | **0.844** | +0.131 |
+  | Kleister F1 | 0.343 | **0.494** | +0.151 |
+
+  - **Significance:** per-doc cluster bootstrap (10k resamples) ΔF1 = **+0.141, 95% CI
+    [+0.067, +0.218], p(Δ≤0)=0.000**; **14/20 docs improved, 2 regressed, 4 tie.**
+  - phi4-mini jumps from the **worst** mid-size local model (0.528) to **0.669** — above
+    gemma3-4b / mistral-7b (~0.64) and level with the **70B/120B large arm** (0.667 / 0.655,
+    see §2). A task-tuned **3.8B local** model matches the frontier large arm on this KIE
+    task, for **free**, on an 8 GB laptop. Exact-match (0.312) also beats every Phase-2
+    model except gemma4-31b (15/80).
+  - Fine-tuning **repaired phi4-mini's few-shot collapse** (baseline few-shot·lines_only
+    0.426 → 0.650) — relevant to [P5].
+- **Key methodological finding (Run 1 → Run 2):** Run 1 gained only **+0.079** (CI
+  [+0.021, +0.136]) because the LoRA attached to **only 2 of the 7 intended modules**.
+  Phi-3/Phi-4-mini **fuse** attention into `qkv_proj` and MLP into `gate_up_proj`, so
+  Unsloth's default target names `q/k/v/gate/up_proj` matched **nothing** — only `o_proj`
+  + `down_proj` were adapted. Setting `target_modules=[qkv_proj, o_proj, gate_up_proj,
+  down_proj]` (+ rank 16→64, epochs 3→5, cap→full data) roughly **doubled the delta** to
+  +0.141. *Lesson: verify the adapter actually attached to the intended (fused) modules
+  before trusting a weak fine-tuning result.*
+- **Caveat — truncation:** at `max_seq_len=4096`, **2992/4460 training examples (67%) were
+  dropped as truncated** (long Kleister `lines_plus_kv` whose key-value dumps exceed 4096
+  tokens), so Run 2 effectively trained on SROIE + short Kleister. The gain held regardless;
+  a longer sequence length is the obvious remaining lever if more is wanted.
+- **Caveat — latency not comparable:** measured ft latency (19.9 s) vs baseline (9.1 s) is a
+  **measurement artifact** — the ft re-eval ran under severe memory/disk pressure (swap
+  thrashing on the 8 GB M1 with a near-full disk). Same architecture/quant ⇒ inference cost
+  is expected ~equal; latency needs a clean re-measure. Quality metrics (temp=0, seed=42)
+  are deterministic and unaffected.
+- **Data hygiene:** SFT built by `scripts/make_train_data.py` from **train splits only**;
+  leakage assert passed (0 test-set doc_ids in 2230 training docs) + determinism test green.
+  The frozen 20-doc test set never entered training.
+- **Infra (deviation from plan):** trained on **Kaggle T4×2** (Unsloth), not the DO GPU
+  droplet [P2] originally anticipated — free, nothing to destroy. Driven **headlessly** via
+  the Kaggle CLI (`kernels push/status/output`); GPU pinned with
+  `machine_shape=NvidiaTeslaT4` (plain `enable_gpu` yields an incompatible P100). GGUF
+  export runs in a **separate CPU-only kernel** (tensor-level LoRA merge +
+  `tokenizer_class=GPT2Tokenizer` to route llama.cpp to Phi-4-mini's gpt-4o BPE path,
+  which otherwise demands a nonexistent `tokenizer.model`).
+- **Artifact:** `results/runs.jsonl` (phi4-mini-ft, 80 rows) vs the frozen phi4-mini
+  baseline; `config/train.yaml`, `notebooks/03_qlora_finetune.ipynb`; trained adapter as
+  Kaggle dataset `azharali7/phi4-mini-ft-adapter` (v2); plots regenerated.
+- **Dissertation value:** the viva headline — *"task-specific QLoRA turns the worst
+  mid-size local model (3.8B, F1 0.528) into one that matches a 70–120B cloud model
+  (0.669) and doubles exact-match, at zero cost on an 8 GB laptop."*
+
 ---
 
 ## 5. Roadmap — Phase 2 (mid-sem, now) vs Phase 3 (final viva, reserved)
@@ -262,6 +323,9 @@ Goal: the *improvement* narrative — how to make small models competitive.
 - **[P2] ⭐ Headline: QLoRA fine-tuning** of phi4-mini + mistral-7b on the **train splits
   only** (SROIE + Kleister), then re-run the **same frozen 20×4 grid** for a clean
   before→after delta vs the Phase-2 baseline.
+  - **✅ phi4-mini DONE — see [E6]:** F1 0.528→0.669 (ΔF1 +0.141, 95% CI [+0.067,+0.218],
+    p≈0), exact-match 0.125→0.312. A tuned 3.8B local model reaches the 70–120B large arm.
+    Trained on Kaggle T4×2 (Unsloth), not the DO droplet. **mistral-7b-ft still pending.**
   - *Why it's the viva centrepiece:* targets the punchline *"a fine-tuned 3.8B/7B matches
     or beats GPT-4o zero-shot on this narrow KIE task at a fraction of cost/latency"* —
     turning the thesis from "big beats small" into "small + task-tuning closes the gap."
