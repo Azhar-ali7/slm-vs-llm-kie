@@ -49,7 +49,7 @@ conditions:
                           # -> bounded context for small local models & Azure cost)
 
 # ----------------------------------------------------------------------------
-# Models — locked set. type: local (Ollama) | do_serverless (DigitalOcean, billed).
+# Models — locked set. type: local (Ollama) | bedrock (AWS, billed) | google (Gemma).
 # Ordered smallest -> largest so an 8GB OOM on a big model never blocks the
 # small-model results already written. params_b is used for the F1-vs-size plot.
 #
@@ -146,21 +146,28 @@ models:
     hosted_price: {in: [0.05, 0.15], out: [0.10, 0.20]}   # Mistral-7B v0.3 0.14/0.20; Nemo tier low
   # Large arm = frontier commercial models, served via DigitalOcean serverless
   # inference (pay-per-token on the $200 credit; no GPU droplet, no idle billing).
+  # --- Large arm: AWS Bedrock (serverless, per-token) + Google API for Gemma.
+  #     DigitalOcean retired (no account). Ordered ascending by size 27B -> 405B. ---
+  - id: gemma3-27b
+    display: Gemma-3-27B
+    type: google
+    google_model: gemma3-27b          # -> api.google.models (gemma-3-27b-it) — real Gemma,
+    params_b: 27.0                     #    keeps the Gemma scaling curve 1B->27B alive
   - id: frontier-llm
     display: GPT-OSS-120B
-    type: do_serverless
-    do_model: frontier-llm            # -> api.digitalocean.models (openai-gpt-oss-120b)
+    type: bedrock
+    bedrock_model: frontier-llm       # -> api.bedrock.models (openai.gpt-oss-120b-1:0)
     params_b: 120.0
-  - id: large-open-llm
-    display: Llama-3.3-70B
-    type: do_serverless
-    do_model: large-open-llm          # -> api.digitalocean.models (llama3.3-70b-instruct)
-    params_b: 70.0
-  - id: gemma4-31b
-    display: Gemma-4-31B
-    type: do_serverless
-    do_model: gemma4-31b              # -> api.digitalocean.models (gemma-4-31B-it)
-    params_b: 31.0                    # extends the Gemma scaling curve 1B->31B
+  - id: qwen3-235b
+    display: Qwen3-235B-A22B
+    type: bedrock
+    bedrock_model: qwen3-235b         # -> api.bedrock.models (qwen.qwen3-235b-a22b-2507)
+    params_b: 235.0                    #    largest general Qwen on Bedrock (MoE, 22B active)
+  - id: llama-405b
+    display: Llama-3.1-405B
+    type: bedrock
+    bedrock_model: llama-405b         # -> api.bedrock.models (largest Llama; us-west-2)
+    params_b: 405.0
 
 # ----------------------------------------------------------------------------
 # Local model runtime Ollama
@@ -184,7 +191,57 @@ ollama:
 api:
   provider: azure_openai    # azure_openai | anthropic | openai (only affects type:api)
 
-  # --- DigitalOcean serverless inference (ACTIVE large arm) ----------------
+  # --- AWS Bedrock (ACTIVE large arm) --------------------------------------
+  # Fully-managed SERVERLESS models via the Converse API — on-demand, per-token,
+  # no provisioned endpoint / hourly charge. Auth: a Bedrock API key in env
+  # AWS_BEARER_TOKEN_BEDROCK (Console -> Bedrock -> API keys; needs boto3>=1.40),
+  # or IAM keys via the default chain. PREREQ: enable model access for each model
+  # (Console -> Bedrock -> Model access) — Llama/Qwen/GPT-OSS are instant-approve.
+  # COST: these are LARGE models; validate with `--mock`/`--pilot` and watch cost_usd.
+  bedrock:
+    region: us-west-2                 # Llama-3.1-405B is on-demand here; Qwen3 & GPT-OSS too
+    api_key_env: AWS_BEARER_TOKEN_BEDROCK
+    temperature: 0.0
+    max_tokens: 512
+    request_timeout_s: 90
+    models:
+      # model = Bedrock modelId (or a cross-region inference-profile id with a geo
+      # prefix like `us.` when a bare id reports "on-demand not supported").
+      # Prices USD per 1M tokens (approx, us-west-2) — used only for the cost plot.
+      frontier-llm:
+        model: "openai.gpt-oss-120b-1:0"
+        price_in: 0.15
+        price_out: 0.60
+      qwen3-235b:
+        model: "qwen.qwen3-235b-a22b-2507-v1:0"
+        price_in: 0.22
+        price_out: 0.88
+      llama-405b:
+        # 405B is cross-region-inference only in most regions -> use the `us.` profile.
+        model: "us.meta.llama3-1-405b-instruct-v1:0"
+        price_in: 2.40
+        price_out: 2.40
+      # More large models (enable by adding an entry + a models: row, both instant-approve):
+      #   deepseek-v3:  model: "deepseek.v3-v1:0"                      (~671B, largest open)
+      #   mistral-large: model: "mistral.mistral-large-2407-v1:0"
+
+  # --- Google Generative Language API (Gemma arm) --------------------------
+  # Gemma isn't on Bedrock, so the Gemma arm uses Google's own API. Free within
+  # rate limits (cost $0; tokens still recorded). Auth: env GEMINI_API_KEY
+  # (Google AI Studio -> Get API key).
+  google:
+    base_url: "https://generativelanguage.googleapis.com/v1beta"
+    api_key_env: GEMINI_API_KEY
+    temperature: 0.0
+    max_tokens: 512
+    request_timeout_s: 60
+    models:
+      gemma3-27b:
+        model: "gemma-3-27b-it"       # largest Gemma-3 on the Gemini API
+        price_in: 0.0                 # free tier
+        price_out: 0.0
+
+  # --- DigitalOcean serverless inference (RETIRED — no account) ------------
   # OpenAI-compatible (https://inference.do-ai.run/v1), single "model access
   # key" (env DO_INFERENCE_KEY, created in DO Control Panel). Pay-per-token on
   # the $200 credit — no GPU droplet, no idle/hourly billing. Hosts GPT-4o and

@@ -40,6 +40,16 @@ def _make_runner(cfg: dict[str, Any], model: dict[str, Any]) -> ModelRunner:
         return DigitalOceanRunner(
             model_id=model["id"], do_model_key=model["do_model"], api_cfg=cfg["api"]
         )
+    if mtype == "bedrock":
+        from src.models.bedrock_runner import BedrockRunner
+        return BedrockRunner(
+            model_id=model["id"], bedrock_model_key=model["bedrock_model"], api_cfg=cfg["api"]
+        )
+    if mtype == "google":
+        from src.models.google_runner import GoogleRunner
+        return GoogleRunner(
+            model_id=model["id"], google_model_key=model["google_model"], api_cfg=cfg["api"]
+        )
     raise ValueError(f"Unknown model type {mtype!r} for {model['id']!r}")
 
 
@@ -70,6 +80,8 @@ def model_meta(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
     foundry_models = cfg.get("api", {}).get("foundry", {}).get("models", {})
     openrouter_models = cfg.get("api", {}).get("openrouter", {}).get("models", {})
     do_models = cfg.get("api", {}).get("digitalocean", {}).get("models", {})
+    bedrock_models = cfg.get("api", {}).get("bedrock", {}).get("models", {})
+    google_models = cfg.get("api", {}).get("google", {}).get("models", {})
     for model in cfg["models"]:
         entry = {
             "type": model["type"],
@@ -101,6 +113,14 @@ def model_meta(cfg: dict[str, Any]) -> dict[str, dict[str, Any]]:
             dm = do_models.get(model.get("do_model"), {})
             entry["price_in"] = dm.get("price_in", 0.0)
             entry["price_out"] = dm.get("price_out", 0.0)
+        elif model["type"] == "bedrock":
+            bm = bedrock_models.get(model.get("bedrock_model"), {})
+            entry["price_in"] = bm.get("price_in", 0.0)
+            entry["price_out"] = bm.get("price_out", 0.0)
+        elif model["type"] == "google":
+            gm = google_models.get(model.get("google_model"), {})
+            entry["price_in"] = gm.get("price_in", 0.0)
+            entry["price_out"] = gm.get("price_out", 0.0)
         # Price range for the accuracy-cost figure. Billed models have a single
         # real rate (low == high). Local models carry a *hypothetical* market
         # band (hosted_price) — what it would cost to rent them — since "$0"
