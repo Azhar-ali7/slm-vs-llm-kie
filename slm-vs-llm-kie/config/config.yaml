@@ -144,6 +144,18 @@ models:
     foundry_model: mistral
     params_b: 7.0
     hosted_price: {in: [0.05, 0.15], out: [0.10, 0.20]}   # Mistral-7B v0.3 0.14/0.20; Nemo tier low
+  # Phase-3 QLoRA fine-tune of mistral-7b (train split only; the [P2] second fine-tune).
+  # Same round-trip as phi4-mini-ft: Kaggle T4 QLoRA -> GGUF -> `ollama create mistral-7b-ft`.
+  # The runner skips it until the tag exists. Append rows without touching the baseline:
+  #   python scripts/run_eval.py --models mistral-7b-ft
+  - id: mistral-7b-ft
+    display: Mistral-7B (fine-tuned)
+    type: local
+    tag: mistral-7b-ft
+    params_b: 7.0
+    finetuned: true
+    base: mistral-7b
+    hosted_price: {in: [0.05, 0.15], out: [0.10, 0.20]}   # same size/economics as base
   # Large arm = frontier commercial models, served via DigitalOcean serverless
   # inference (pay-per-token on the $200 credit; no GPU droplet, no idle billing).
   # --- Large arm: AWS Bedrock (serverless, per-token) + Google API for Gemma.

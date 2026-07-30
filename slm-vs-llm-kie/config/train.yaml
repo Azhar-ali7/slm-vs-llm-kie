@@ -21,29 +21,33 @@ data:
   max_per_dataset: null
 
 # Base models to fine-tune ---------------------------------------------------
-# Start with phi4-mini only (prove the round-trip), then uncomment mistral.
-# `ollama_tag` is the NEW tag the GGUF is imported as, matching config.yaml.
+# The notebook trains the FIRST model in this dict (`next(iter(models))`), so the
+# active fine-tune is whichever is listed first. phi4-mini-ft is DONE (see [E6]);
+# mistral-7b-ft is now active ([P2] completion). `ollama_tag` is the NEW tag the
+# GGUF is imported as, matching config.yaml.
+#
+# `target_modules` is PER MODEL because architectures differ: Mistral uses the
+# standard unfused projections, whereas Phi-3/Phi-4-mini FUSE attention into
+# qkv_proj and MLP into gate_up_proj (targeting the unfused names on Phi-4 matches
+# NOTHING — the Run-1 bug; see [E6]).
 models:
-  phi4-mini-ft:
-    base_repo: "unsloth/Phi-4-mini-instruct"   # Unsloth 4-bit-ready checkpoint
-    base_ollama: phi4-mini                      # baseline tag (for the Modelfile template)
+  mistral-7b-ft:                                # ACTIVE — [P2] second fine-tune
+    base_repo: "unsloth/mistral-7b-instruct-v0.3-bnb-4bit"   # matches Ollama `mistral` (v0.3)
+    base_ollama: mistral                        # baseline tag (for the Modelfile template)
+    ollama_tag: mistral-7b-ft
+    target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+  phi4-mini-ft:                                 # DONE (see [E6]) — kept for reproducibility
+    base_repo: "unsloth/Phi-4-mini-instruct"    # Unsloth 4-bit-ready checkpoint
+    base_ollama: phi4-mini
     ollama_tag: phi4-mini-ft
-  # mistral-7b-ft:
-  #   base_repo: "unsloth/mistral-7b-instruct-v0.3-bnb-4bit"
-  #   base_ollama: mistral
-  #   ollama_tag: mistral-7b-ft
+    target_modules: [qkv_proj, o_proj, gate_up_proj, down_proj]   # fused (Phi-4-mini)
 
-# LoRA / QLoRA adapter --------------------------------------------------------
+# LoRA / QLoRA adapter (shared knobs; target_modules is per-model above) -------
 lora:
   r: 64                  # Run 2: 16 -> 64 for more adapter capacity.
   alpha: 64              # alpha = r keeps merge scaling = 1.0.
   dropout: 0.0            # Unsloth-optimized path prefers 0.0
   bias: none
-  # Phi-3/Phi-4-mini FUSE attention into qkv_proj and MLP into gate_up_proj.
-  # Run 1 used the unfused names [q_proj,k_proj,v_proj,gate_proj,up_proj,...] which
-  # matched NOTHING for those five (only o_proj + down_proj got adapters -> weak gain).
-  # These fused names cover all attention + MLP projections.
-  target_modules: [qkv_proj, o_proj, gate_up_proj, down_proj]
   use_gradient_checkpointing: unsloth
 
 # SFT trainer hyperparameters ------------------------------------------------
