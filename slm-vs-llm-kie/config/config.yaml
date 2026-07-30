@@ -147,7 +147,8 @@ models:
   # Large arm = frontier commercial models, served via DigitalOcean serverless
   # inference (pay-per-token on the $200 credit; no GPU droplet, no idle billing).
   # --- Large arm: AWS Bedrock (serverless, per-token) + Google API for Gemma.
-  #     DigitalOcean retired (no account). Ordered ascending by size 27B -> 405B. ---
+  #     DigitalOcean retired (no account). Ordered ascending by size 27B -> 405B,
+  #     plus Llama-4-Maverick (MoE, ~400B total). ---
   - id: gemma3-27b
     display: Gemma-3-27B
     type: google
@@ -168,6 +169,11 @@ models:
     type: bedrock
     bedrock_model: llama-405b         # -> api.bedrock.models (largest Llama; us-west-2)
     params_b: 405.0
+  - id: llama4-maverick
+    display: Llama-4-Maverick
+    type: bedrock
+    bedrock_model: llama4-maverick    # -> api.bedrock.models (us.meta.llama4-maverick-17b)
+    params_b: 400.0                    # MoE: 17B active / ~400B total (128 experts)
 
 # ----------------------------------------------------------------------------
 # Local model runtime Ollama
@@ -223,6 +229,11 @@ api:
         model: "us.meta.llama3-1-405b-instruct-v1:0"
         price_in: 2.40
         price_out: 2.40
+      llama4-maverick:
+        # Llama 4 Maverick (17B active / 128 experts) — inference-profile only -> `us.`
+        model: "us.meta.llama4-maverick-17b-instruct-v1:0"
+        price_in: 0.24
+        price_out: 0.97
       # More large models (enable by adding an entry + a models: row, both instant-approve):
       #   deepseek-v3:  model: "deepseek.v3-v1:0"                      (~671B, largest open)
       #   mistral-large: model: "mistral.mistral-large-2407-v1:0"
