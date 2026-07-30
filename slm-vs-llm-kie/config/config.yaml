@@ -151,9 +151,14 @@ models:
   #     plus Llama-3.3-70B and Llama-4-Maverick (MoE, ~400B total). ---
   - id: gemma3-27b
     display: Gemma-3-27B
-    type: google
-    google_model: gemma3-27b          # -> api.google.models (gemma-3-27b-it) — real Gemma,
+    type: bedrock                      # moved off Google (retired gemma-3-27b-it) to Bedrock
+    bedrock_model: gemma3-27b          # -> api.bedrock.models (google.gemma-3-27b-it)
     params_b: 27.0                     #    keeps the Gemma scaling curve 1B->27B alive
+  - id: gemma4-31b
+    display: Gemma-4-31B
+    type: google
+    google_model: gemma4-31b          # -> api.google.models (gemma-4-31b-it) — newest Gemma
+    params_b: 31.0                     #    Gemma-3 vs Gemma-4 generational compare at ~27-31B
   - id: frontier-llm
     display: GPT-OSS-120B
     type: bedrock
@@ -216,6 +221,10 @@ api:
       # model = Bedrock modelId (or a cross-region inference-profile id with a geo
       # prefix like `us.` when a bare id reports "on-demand not supported").
       # Prices USD per 1M tokens (approx, us-west-2) — used only for the cost plot.
+      gemma3-27b:
+        model: "google.gemma-3-27b-it"   # Gemma on Bedrock (Google's model, AWS-served)
+        price_in: 0.20                    # approx; Bedrock Gemma pricing not widely published
+        price_out: 0.20
       frontier-llm:
         model: "openai.gpt-oss-120b-1:0"
         price_in: 0.15
@@ -250,8 +259,8 @@ api:
     max_tokens: 512
     request_timeout_s: 60
     models:
-      gemma3-27b:
-        model: "gemma-3-27b-it"       # largest Gemma-3 on the Gemini API
+      gemma4-31b:
+        model: "gemma-4-31b-it"       # newest Gemma on the Gemini API (gemma-3 retired)
         price_in: 0.0                 # free tier
         price_out: 0.0
 

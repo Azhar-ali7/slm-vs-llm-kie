@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # run_large_arm.sh — run the LARGE arm on AWS Bedrock (GPT-OSS-120B, Qwen3-235B,
-# Llama-3.3-70B, Llama-4-Maverick) + Google (Gemma-3-27B), then refresh the report
+# Llama-3.3-70B, Llama-4-Maverick) + Google (Gemma-4-31B), then refresh the report
 # artifacts.
 #
 # Prereqs (one-time, manual):
@@ -20,7 +20,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -f .env ] && set -a && . ./.env && set +a || true
 
-MODELS="gemma3-27b frontier-llm qwen3-235b llama-70b llama4-maverick"
+MODELS="gemma3-27b gemma4-31b frontier-llm qwen3-235b llama-70b llama4-maverick"
 
 if [ -z "${AWS_BEARER_TOKEN_BEDROCK:-}" ] && [ -z "${AWS_ACCESS_KEY_ID:-}" ] && [ -z "${AWS_PROFILE:-}" ]; then
   echo "ERROR: no Bedrock credentials. Set AWS_BEARER_TOKEN_BEDROCK (API key) in .env,"
@@ -36,9 +36,9 @@ python3 - <<'PY'
 from src.config import load_config
 from src.models.registry import build_runners, model_meta
 cfg = load_config(); meta = model_meta(cfg)
-for r in build_runners(cfg, only="gemma3-27b frontier-llm qwen3-235b llama-70b llama4-maverick".split()):
+for r in build_runners(cfg, only="gemma3-27b gemma4-31b frontier-llm qwen3-235b llama-70b llama4-maverick".split()):
     assert r.model_id in meta, r.model_id
-print("    OK: config + 5 large runners build")
+print("    OK: config + 6 large runners build")
 PY
 
 echo "==> [2/3] Smoke test: one real Bedrock call (frontier-llm)"
