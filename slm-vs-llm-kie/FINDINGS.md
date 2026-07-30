@@ -296,6 +296,29 @@ Each entry: **what changed**, **why (hypothesis)**, **result (before→after)**,
   mid-size local model (3.8B, F1 0.528) into one that matches a 70–120B cloud model
   (0.669) and doubles exact-match, at zero cost on an 8 GB laptop."*
 
+### [E7] 2026-07-29 — Phase-3 [P4]: rule/regex recall fallback — a supporting NEGATIVE result
+- **What:** A model-agnostic post-processor (`src/eval/rules.py`) that fills only *null*
+  fields with deterministic pattern extraction over the document lines, measured post-hoc
+  on the stored predictions (`scripts/eval_rule_fallback.py`, no re-inference).
+- **Why demoted:** this is **off the SLM-vs-LLM axis** — it applies the same rules to every
+  model, so it can't speak to small-vs-large. Kept as an **opt-in helper**, not part of the
+  headline comparison.
+- **Result — deliberately kept because the near-null finding *reinforces* the thesis:**
+  - **Overall ΔF1 = +0.005** (95% CI [+0.002, +0.008]) — statistically nonzero, practically
+    negligible. **The six most capable models (gemma2-2b, mistral-7b, gemma3-4b, frontier-llm,
+    gemma4-31b, phi4-mini-ft) gained exactly 0.000.** Only the *weakest* mid model moved
+    (phi4-mini +0.033). Total across the whole 12-model × 20-doc study: **27 correct fills.**
+  - **Format-distinctive fields are rule-recoverable; semantically-selected fields are not.**
+    Per-fill precision: `address__postcode` 89% (17/19), `charity_number` 77% (10/13) — kept;
+    `report_date` 56%, `income` 53%, `spending` **11%** (grabs the wrong £ figure) — excluded,
+    because a wrong fill costs precision with no recall gain (wrong ≠ tp).
+- **Interpretation (the point):** cheap post-processing does **not** close the gap — quality
+  comes from the *model*, not from rules; and like constrained decoding [E2], what little it
+  gives helps only the weakest model. The on-thesis improvement lever is fine-tuning [E6],
+  not this.
+- **Artifact:** `src/eval/rules.py`, `scripts/eval_rule_fallback.py`, `tests/test_rules.py`
+  (7 tests). The eval loop and frozen baseline are untouched.
+
 ---
 
 ## 5. Roadmap — Phase 2 (mid-sem, now) vs Phase 3 (final viva, reserved)
@@ -341,9 +364,10 @@ Goal: the *improvement* narrative — how to make small models competitive.
     viva timeline.
 - **[P3] Self-consistency voting** (n_samples=3, majority vote per field) — does sampling
   + vote beat a single greedy decode for small models?
-- **[P4] Hybrid regex fallback** — fill nulls with rule-based extraction (dates, £ amounts,
-  postcodes) when the model leaves a field empty; measure recall lift (recall is the
-  known bottleneck — see §2 headline).
+- **[P4] Hybrid regex fallback** — ✅ **DONE but DEMOTED (see [E7]):** measured, near-null
+  lift (+0.005 F1; 0.000 for the six most capable models), and off the SLM-vs-LLM axis
+  (model-agnostic). Kept as an opt-in helper + a supporting *negative* finding — *rules
+  don't close the gap; the model does.* Not a headline.
 - **[P5] Drop few-shot for the smallest models** — llama3.2-1b collapsed under few_shot
   (F1 0.025 vs 0.47 zero-shot; the 2 examples blew its context). Explicit per-model
   shot-mode comparison.
