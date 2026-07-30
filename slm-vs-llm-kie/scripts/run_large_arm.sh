@@ -4,8 +4,9 @@
 # Llama-3.1-405B) + Google (Gemma-3-27B), then refresh the report artifacts.
 #
 # Prereqs (one-time, manual):
-#   1. AWS: enable model access (Console -> Bedrock -> Model access) for GPT-OSS,
-#      Qwen3, Llama; create a Bedrock API key (Console -> Bedrock -> API keys).
+#   1. AWS: create a Bedrock API key (Console -> Bedrock -> API keys). No model-access
+#      opt-in needed — serverless models (GPT-OSS/Qwen3/Llama) auto-enable on first call
+#      since 2025-09-29 (Model access page retired).
 #   2. Google: get an API key at https://aistudio.google.com/apikey
 #   3. Put both in .env (see .env.example): AWS_BEARER_TOKEN_BEDROCK, GEMINI_API_KEY.
 #   4. pip install -r requirements.txt  (boto3>=1.40 for API-key auth).

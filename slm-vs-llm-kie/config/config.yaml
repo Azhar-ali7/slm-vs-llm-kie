@@ -185,8 +185,8 @@ ollama:
   mem_sample_interval_s: 0.25   # how often to poll ollama-server RSS during a call
 
 # ----------------------------------------------------------------------------
-# API models — ACTIVE cloud path: DigitalOcean serverless inference
-# (Azure / OpenRouter blocks kept below for reference but unused.)
+# API models — ACTIVE cloud path: AWS Bedrock (large arm) + Google API (Gemma).
+# (DigitalOcean / Azure / OpenRouter blocks kept below for reference but unused.)
 # ----------------------------------------------------------------------------
 api:
   provider: azure_openai    # azure_openai | anthropic | openai (only affects type:api)
@@ -195,8 +195,10 @@ api:
   # Fully-managed SERVERLESS models via the Converse API — on-demand, per-token,
   # no provisioned endpoint / hourly charge. Auth: a Bedrock API key in env
   # AWS_BEARER_TOKEN_BEDROCK (Console -> Bedrock -> API keys; needs boto3>=1.40),
-  # or IAM keys via the default chain. PREREQ: enable model access for each model
-  # (Console -> Bedrock -> Model access) — Llama/Qwen/GPT-OSS are instant-approve.
+  # or IAM keys via the default chain. No model-access opt-in needed: since
+  # 2025-09-29 Bedrock auto-enables serverless models on first invocation (the
+  # Model access page was retired). Meta/Qwen/OpenAI work instantly; only Anthropic
+  # (not used here) still needs a one-time use-case form.
   # COST: these are LARGE models; validate with `--mock`/`--pilot` and watch cost_usd.
   bedrock:
     region: us-west-2                 # Llama-3.1-405B is on-demand here; Qwen3 & GPT-OSS too
