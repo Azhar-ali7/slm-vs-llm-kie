@@ -2,13 +2,13 @@
   "dataset": "kleister_charity",
   "description": "Kleister-Charity financial reports — 8 fields (complex).",
   "fields": [
-    {"name": "charity_name",                        "type": "string",   "required": true,  "hint": "the registered charity name only"},
-    {"name": "charity_number",                      "type": "string",   "required": false, "hint": "the registered charity number, digits only"},
-    {"name": "report_date",                         "type": "date",     "required": false, "hint": "the date the report covers/was issued"},
-    {"name": "income_annually_in_british_pounds",   "type": "currency", "required": false, "hint": "total annual income in GBP, a single number without currency symbols"},
-    {"name": "spending_annually_in_british_pounds", "type": "currency", "required": false, "hint": "total annual expenditure/spending in GBP, a single number without currency symbols"},
-    {"name": "address__post_town",                  "type": "string",   "required": false, "hint": "the town or city of the registered address"},
-    {"name": "address__postcode",                   "type": "string",   "required": false, "hint": "the UK postcode of the registered address"},
-    {"name": "address__street_line",                "type": "string",   "required": false, "hint": "the street line of the registered address"}
+    {"name": "charity_name",                        "type": "string",   "required": true},
+    {"name": "charity_number",                      "type": "string",   "required": false},
+    {"name": "report_date",                         "type": "date",     "required": false},
+    {"name": "income_annually_in_british_pounds",   "type": "currency", "required": false},
+    {"name": "spending_annually_in_british_pounds", "type": "currency", "required": false},
+    {"name": "address__post_town",                  "type": "string",   "required": false},
+    {"name": "address__postcode",                   "type": "string",   "required": false},
+    {"name": "address__street_line",                "type": "string",   "required": false}
   ]
 }
