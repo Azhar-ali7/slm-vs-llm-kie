@@ -2,9 +2,9 @@
   "dataset": "sroie",
   "description": "SROIE receipts — 4 fields (simple).",
   "fields": [
-    {"name": "company",  "type": "string",   "required": true},
-    {"name": "date",     "type": "date",     "required": true},
-    {"name": "address",  "type": "string",   "required": true},
-    {"name": "total",    "type": "currency", "required": true}
+    {"name": "company",  "type": "string",   "required": true, "hint": "the merchant/business name only; exclude registration numbers in parentheses"},
+    {"name": "date",     "type": "date",     "required": true, "hint": "the receipt/transaction date"},
+    {"name": "address",  "type": "string",   "required": true, "hint": "the merchant's full street address as printed"},
+    {"name": "total",    "type": "currency", "required": true, "hint": "the final total amount paid"}
   ]
 }

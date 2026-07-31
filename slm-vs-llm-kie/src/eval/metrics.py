@@ -35,6 +35,15 @@ def norm_string(v: Any) -> str:
     return re.sub(r"\s+", " ", str(v).strip().lower())
 
 
+def norm_string_lenient(v: Any) -> str:
+    """Normalised-match string form: drop ALL non-alphanumerics (whitespace,
+    punctuation) and lowercase. Bridges format-only mismatches the strict metric
+    rejects — e.g. 'OFF JALAN PUDU' vs 'OFF JALANPUDU' (a missing OCR space) and
+    'S/B' vs 'SB'. Symmetric (applied identically to gold + pred), so it preserves
+    the fairness guarantee. Reported ALONGSIDE strict, never replacing it."""
+    return re.sub(r"[^a-z0-9]", "", str(v).strip().lower())
+
+
 def norm_number(v: Any) -> str:
     """Canonical numeric string; strips currency symbols, commas, spaces."""
     s = str(v)
@@ -58,19 +67,19 @@ def norm_date(v: Any) -> str:
     return norm_string(v)
 
 
-def normalize(v: Any, ftype: str) -> str:
+def normalize(v: Any, ftype: str, lenient: bool = False) -> str:
     if ftype in ("number", "currency"):
         return norm_number(v)
     if ftype == "date":
         return norm_date(v)
-    return norm_string(v)
+    return norm_string_lenient(v) if lenient else norm_string(v)
 
 
 def _field_types(schema: dict[str, Any]) -> dict[str, str]:
     return {f["name"]: f.get("type", "string") for f in schema["fields"]}
 
 
-def classify_field(gold: Any, pred: Any, ftype: str) -> str:
+def classify_field(gold: Any, pred: Any, ftype: str, lenient: bool = False) -> str:
     g_null, p_null = is_null(gold), is_null(pred)
     if g_null and p_null:
         return "tn"
@@ -78,13 +87,17 @@ def classify_field(gold: Any, pred: Any, ftype: str) -> str:
         return "hallucinated"
     if not g_null and p_null:
         return "missing"
-    return "tp" if normalize(gold, ftype) == normalize(pred, ftype) else "wrong"
+    return "tp" if normalize(gold, ftype, lenient) == normalize(pred, ftype, lenient) else "wrong"
 
 
 def score_document(gold: dict[str, Any], pred: dict[str, Any] | None,
-                   schema: dict[str, Any]) -> dict[str, Any]:
+                   schema: dict[str, Any], lenient: bool = False) -> dict[str, Any]:
     """Score one document's prediction. A None pred (parse failure) = all missing
-    where gold is non-null, all tn where gold is null."""
+    where gold is non-null, all tn where gold is null.
+
+    `lenient=True` uses punctuation/whitespace-insensitive string matching
+    (norm_string_lenient) — a normalised-match score reported alongside the strict
+    exact-match one. Numbers/dates are unaffected (already canonicalised)."""
     types = _field_types(schema)
     per_field: dict[str, str] = {}
     counts = {"tp": 0, "wrong": 0, "missing": 0, "hallucinated": 0, "tn": 0}
@@ -92,7 +105,7 @@ def score_document(gold: dict[str, Any], pred: dict[str, Any] | None,
     for field, ftype in types.items():
         g = gold.get(field)
         p = None if pred is None else pred.get(field)
-        cat = classify_field(g, p, ftype)
+        cat = classify_field(g, p, ftype, lenient)
         per_field[field] = cat
         counts[cat] += 1
 

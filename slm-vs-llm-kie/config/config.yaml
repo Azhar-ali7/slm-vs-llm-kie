@@ -45,8 +45,11 @@ conditions:
   input_variants: [lines_only, lines_plus_kv]
   few_shot_k: 2            # examples drawn from TRAIN split, 
   n_samples: 1            # repeats per cell; can be raised to 2 only after a clean pilot
-  max_input_lines: 120    # cap document lines in the prompt (long Kleister reports
-                          # -> bounded context for small local models & Azure cost)
+  max_input_lines: 250    # cap document lines in the prompt. Raised 120 -> 250 to
+                          # recover income/spending recall on long Kleister reports
+                          # (the figures often sit past line 120). CAVEAT: this lengthens
+                          # prompts for the small local models too — verify 8GB memory /
+                          # context headroom before the full local re-run (large arm is fine).
 
 # ----------------------------------------------------------------------------
 # Models — locked set. type: local (Ollama) | bedrock (AWS, billed) | google (Gemma).

@@ -38,7 +38,12 @@ def field_spec(schema: dict[str, Any]) -> str:
     rows = []
     for f in schema["fields"]:
         req = "required" if f.get("required") else "optional"
-        rows.append(f'- "{f["name"]}" ({f.get("type", "string")}, {req})')
+        row = f'- "{f["name"]}" ({f.get("type", "string")}, {req})'
+        # Optional per-field `hint`: generic task guidance (e.g. "name only, no
+        # registration numbers"). Kept domain-generic — NOT tuned to the test set.
+        if f.get("hint"):
+            row += f' — {f["hint"]}'
+        rows.append(row)
     return "\n".join(rows)
 
 
