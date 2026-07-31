@@ -14,13 +14,13 @@
 #
 # COST: these are LARGE billed models (Llama-4-Maverick especially). ALWAYS dry-run first:
 #     python scripts/run_eval.py --mock                      # no API, wiring check
-#     python scripts/run_eval.py --pilot --models frontier-llm   # 3 docs, tiny cost
+#     python scripts/run_eval.py --pilot --models deepseek-v3   # 3 docs, tiny cost
 # then run this for the full arm and watch cost_usd in results/runs.jsonl.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -f .env ] && set -a && . ./.env && set +a || true
 
-MODELS="gemma3-27b gemma4-31b frontier-llm qwen3-235b llama-70b llama4-maverick"
+MODELS="gemma3-27b deepseek-v3 qwen3-235b llama-70b llama4-maverick"
 
 if [ -z "${AWS_BEARER_TOKEN_BEDROCK:-}" ] && [ -z "${AWS_ACCESS_KEY_ID:-}" ] && [ -z "${AWS_PROFILE:-}" ]; then
   echo "ERROR: no Bedrock credentials. Set AWS_BEARER_TOKEN_BEDROCK (API key) in .env,"
@@ -36,16 +36,16 @@ python3 - <<'PY'
 from src.config import load_config
 from src.models.registry import build_runners, model_meta
 cfg = load_config(); meta = model_meta(cfg)
-for r in build_runners(cfg, only="gemma3-27b gemma4-31b frontier-llm qwen3-235b llama-70b llama4-maverick".split()):
+for r in build_runners(cfg, only="gemma3-27b deepseek-v3 qwen3-235b llama-70b llama4-maverick".split()):
     assert r.model_id in meta, r.model_id
-print("    OK: config + 6 large runners build")
+print("    OK: config + 5 large runners build")
 PY
 
-echo "==> [2/3] Smoke test: one real Bedrock call (frontier-llm)"
+echo "==> [2/3] Smoke test: one real Bedrock call (deepseek-v3)"
 python3 - <<'PY'
 from src.config import load_config
 from src.models.registry import build_runners
-r = build_runners(load_config(), only=["frontier-llm"])[0]
+r = build_runners(load_config(), only=["deepseek-v3"])[0]
 r.ensure_available()
 res = r.run("Reply with the single word: ok")
 print("    reply:", repr(res.text[:60]), "| err:", res.error)

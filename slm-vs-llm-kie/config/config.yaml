@@ -166,16 +166,15 @@ models:
     type: bedrock                      # moved off Google (retired gemma-3-27b-it) to Bedrock
     bedrock_model: gemma3-27b          # -> api.bedrock.models (google.gemma-3-27b-it)
     params_b: 27.0                     #    keeps the Gemma scaling curve 1B->27B alive
-  - id: gemma4-31b
-    display: Gemma-4-31B
-    type: google
-    google_model: gemma4-31b          # -> api.google.models (gemma-4-31b-it) — newest Gemma
-    params_b: 31.0                     #    Gemma-3 vs Gemma-4 generational compare at ~27-31B
-  - id: frontier-llm
-    display: GPT-OSS-120B
-    type: bedrock
-    bedrock_model: frontier-llm       # -> api.bedrock.models (openai.gpt-oss-120b-1:0)
-    params_b: 120.0
+  # Gemma-4-31B (Google API) DROPPED: its "thinking" cannot be disabled
+  # (thinkingBudget:0 -> HTTP 400 "not supported for this model"), responseMimeType
+  # JSON is ignored, and it returns reasoning-as-answer -> 0 parseable JSON. Not on
+  # Bedrock either. Gemma-3-27B (Bedrock, above) is the Gemma representative.
+  - id: deepseek-v3
+    display: DeepSeek-V3.2
+    type: bedrock                      # replaces GPT-OSS-120B (reasoning truncated the JSON)
+    bedrock_model: deepseek-v3         # -> api.bedrock.models (deepseek.v3.2) — latest flagship
+    params_b: 671.0                    #    671B open MoE; emits clean JSON (tested)
   - id: qwen3-235b
     display: Qwen3-235B-A22B
     type: bedrock
@@ -227,7 +226,8 @@ api:
     region: us-west-2                 # Llama-3.1-405B is on-demand here; Qwen3 & GPT-OSS too
     api_key_env: AWS_BEARER_TOKEN_BEDROCK
     temperature: 0.0
-    max_tokens: 512
+    max_tokens: 1024              # 512 truncated GPT-OSS's JSON (reasoning ate the budget);
+                                  # 1024 gives headroom. Well-behaved models EOS far earlier.
     request_timeout_s: 90
     models:
       # model = Bedrock modelId (or a cross-region inference-profile id with a geo
@@ -237,10 +237,13 @@ api:
         model: "google.gemma-3-27b-it"   # Gemma on Bedrock (Google's model, AWS-served)
         price_in: 0.20                    # approx; Bedrock Gemma pricing not widely published
         price_out: 0.20
-      frontier-llm:
-        model: "openai.gpt-oss-120b-1:0"
-        price_in: 0.15
-        price_out: 0.60
+      deepseek-v3:
+        # Replaces GPT-OSS-120B: gpt-oss is a reasoning model whose harmony reasoning
+        # consumed the 512-token budget, truncating the JSON (27/80 fails). DeepSeek-V3.2
+        # emits clean JSON directly (tested). 671B open MoE, on-demand in us-west-2.
+        model: "deepseek.v3.2"
+        price_in: 0.58                # approx; Bedrock DeepSeek pricing not widely published
+        price_out: 1.68
       qwen3-235b:
         model: "qwen.qwen3-235b-a22b-2507-v1:0"
         price_in: 0.22
@@ -260,21 +263,18 @@ api:
       #   deepseek-v3:  model: "deepseek.v3-v1:0"                      (~671B, largest open)
       #   mistral-large: model: "mistral.mistral-large-2407-v1:0"
 
-  # --- Google Generative Language API (Gemma arm) --------------------------
-  # Gemma isn't on Bedrock, so the Gemma arm uses Google's own API. Free within
-  # rate limits (cost $0; tokens still recorded). Auth: env GEMINI_API_KEY
-  # (Google AI Studio -> Get API key).
+  # --- Google Generative Language API (INACTIVE) ---------------------------
+  # Gemma-4-31B was the only Google-served model; it was DROPPED because its
+  # "thinking" can't be disabled via the API (thinkingBudget:0 -> HTTP 400) and it
+  # won't emit JSON (returns reasoning-as-answer). The runner code is kept for a
+  # future Google model; no active models today. Auth: env GEMINI_API_KEY.
   google:
     base_url: "https://generativelanguage.googleapis.com/v1beta"
     api_key_env: GEMINI_API_KEY
     temperature: 0.0
     max_tokens: 512
     request_timeout_s: 60
-    models:
-      gemma4-31b:
-        model: "gemma-4-31b-it"       # newest Gemma on the Gemini API (gemma-3 retired)
-        price_in: 0.0                 # free tier
-        price_out: 0.0
+    models: {}
 
   # --- DigitalOcean serverless inference (RETIRED — no account) ------------
   # OpenAI-compatible (https://inference.do-ai.run/v1), single "model access
