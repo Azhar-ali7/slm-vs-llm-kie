@@ -12,7 +12,8 @@
 - **Last updated:** 2026-07-28
 - **Dissertation phases:** (1) Abstract ✅ done · (2) Mid-sem ✅ done (baseline
   small-vs-large comparison + constrained decoding) · (3) **Final viva — started**
-  (fine-tuning & recall-lift improvements; QLoRA [P2] phi4-mini done, see [E6]). This
+  (fine-tuning & recall-lift improvements; QLoRA [P2] both fine-tunes done — phi4-mini
+  [E6], mistral-7b [E8]). This
   document is the single running record across all three.
 
 ---
@@ -319,6 +320,65 @@ Each entry: **what changed**, **why (hypothesis)**, **result (before→after)**,
 - **Artifact:** `src/eval/rules.py`, `scripts/eval_rule_fallback.py`, `tests/test_rules.py`
   (7 tests). The eval loop and frozen baseline are untouched.
 
+### [E8] 2026-08-01 — Phase-3 [P2]: QLoRA fine-tuning of mistral-7b (before→after) — a mixed/instructive result
+- **What:** Same QLoRA round-trip as [E6], applied to **mistral-7b (7B)**: fine-tuned with
+  Unsloth (4-bit) on the **train splits only**, exported to a quant-matched **Q4_K_M GGUF**,
+  imported as `mistral-7b-ft` (`type: local`), and re-run through the identical frozen 20×4
+  grid. Chosen as the second fine-tune to test whether the [E6] phi4 win **generalises to a
+  different, already-stronger base**.
+- **Hypothesis:** if fine-tuning is the on-thesis improvement lever, a second base should also
+  gain. mistral-7b was a **middling-strong** Phase-2 baseline (F1 0.642, vs phi4-mini's 0.528).
+- **Result — before→after on identical docs/conditions (computed exactly as [E6]):**
+
+  | Metric | mistral-7b (before) | mistral-7b-ft (after) | Δ |
+  |---|---|---|---|
+  | **F1_macro** | 0.642 | 0.661 | **+0.019** |
+  | **Exact-match** | 0.100 (8/80) | **0.325 (26/80)** | **+0.225** |
+  | Parse failures | 0/80 | 0/80 | — |
+  | SROIE F1 | 0.769 | **0.875** | **+0.106** |
+  | Kleister F1 | 0.514 | 0.447 | **−0.067** |
+
+  - **Significance:** per-doc cluster bootstrap (10k resamples) ΔF1 = **+0.019, 95% CI
+    [−0.049, +0.088], p(Δ≤0)=0.287** — the overall gain **is not statistically significant**
+    (CI spans zero); **9/20 docs improved, 9 regressed, 2 tie.**
+- **The finding (why this is worth keeping):** the aggregate near-null hides a real,
+  interpretable **trade-off** — fine-tuning **specialised the model to SROIE** (F1 +0.106,
+  exact-match *tripled* 8→26) at the **expense of Kleister** (−0.067). Two compounding causes:
+  1. **Little headroom.** Unlike phi4-mini (the *worst* base, 0.528 → +0.141), mistral-7b
+     was already strong (0.642), so the SROIE gain and Kleister loss roughly cancel.
+  2. **Truncation hit Kleister harder than in [E6].** At `max_seq_len=4096`, mistral's
+     SentencePiece tokeniser splits the long Kleister `lines_plus_kv` key-value dumps into
+     *more* tokens than phi4's BPE, so an even larger share of long Kleister examples was
+     dropped as truncated — the model effectively trained on **SROIE + short Kleister** and
+     over-fit SROIE conventions, then **regressed** on the full Kleister test set.
+- **Key methodological finding (per-model LoRA targets):** mistral-7b uses **standard,
+  unfused** attention/MLP projections (`q/k/v/o_proj`, `gate/up/down_proj`) — the *opposite*
+  of phi4-mini's **fused** `qkv_proj`/`gate_up_proj` ([E6]). Reusing phi4's fused target names
+  would silently attach nothing; `config/train.yaml` therefore carries **per-model
+  `target_modules`**. A second Mistral-specific trap: `train_on_responses_only` derives its
+  response marker from the chat template, and Mistral's `[/INST] ` marker carries a **trailing
+  space** that breaks SentencePiece token matching and **masks every label** (zero effective
+  training) — fixed by `rstrip()`-ing the derived markers. *Lesson (generalising [E6]): a
+  fine-tune can run cleanly to completion while learning nothing; verify adapter attachment
+  and label masking per architecture.*
+- **Data hygiene:** SFT from **train splits only**; leakage assert passed; the frozen 20-doc
+  test set never entered training. Same pipeline as [E6].
+- **Infra:** Kaggle **T4×2** (Unsloth), headless via the Kaggle CLI; GGUF export in a
+  separate CPU-only kernel (tensor-level LoRA merge → f16 → Q4_K_M). **No** `GPT2Tokenizer`
+  hack needed — Mistral ships a standard SentencePiece `tokenizer.model`, so llama.cpp
+  converts directly (contrast [E6]).
+- **Artifact:** `results/snapshots/2026-08-01-phase3-finetunes/` (mistral-7b-ft, 80 rows) vs
+  the frozen mistral-7b baseline; `notebooks/03_qlora_finetune.ipynb` (architecture-agnostic),
+  `notebooks/03b_export_gguf_mistral.ipynb`.
+- **Dissertation value:** the honest counterpoint to [E6]. Fine-tuning is **not a uniform
+  free lunch** — it delivers a large gain on a *weak* base (phi4-mini +0.141) but only a
+  marginal, *non-uniform* one on an *already-strong* base (mistral-7b +0.019, SROIE↑/Kleister↓).
+  The Kleister regression **directly motivates a longer sequence length** as the next lever,
+  and the exact-match tripling (8→26) shows the fine-tune still sharply improved *output
+  fidelity* even where F1 was flat. A negative-ish result that strengthens, rather than
+  weakens, the thesis's central claim that **fine-tuning value depends on baseline quality
+  and balanced, untruncated task data**.
+
 ---
 
 ## 5. Roadmap — Phase 2 (mid-sem, now) vs Phase 3 (final viva, reserved)
@@ -348,7 +408,11 @@ Goal: the *improvement* narrative — how to make small models competitive.
   before→after delta vs the Phase-2 baseline.
   - **✅ phi4-mini DONE — see [E6]:** F1 0.528→0.669 (ΔF1 +0.141, 95% CI [+0.067,+0.218],
     p≈0), exact-match 0.125→0.312. A tuned 3.8B local model reaches the 70–120B large arm.
-    Trained on Kaggle T4×2 (Unsloth), not the DO droplet. **mistral-7b-ft still pending.**
+    Trained on Kaggle T4×2 (Unsloth), not the DO droplet.
+  - **✅ mistral-7b DONE — see [E8]:** F1 0.642→0.661 (ΔF1 +0.019, 95% CI [−0.049,+0.088],
+    n.s.), but SROIE +0.106 / Kleister −0.067 and exact-match 0.100→0.325. Mixed/instructive
+    counterpoint: fine-tuning a *strong* base gains little and trades SROIE↑ for Kleister↓
+    (truncation). **Both fine-tunes complete.**
   - *Why it's the viva centrepiece:* targets the punchline *"a fine-tuned 3.8B/7B matches
     or beats GPT-4o zero-shot on this narrow KIE task at a fraction of cost/latency"* —
     turning the thesis from "big beats small" into "small + task-tuning closes the gap."
