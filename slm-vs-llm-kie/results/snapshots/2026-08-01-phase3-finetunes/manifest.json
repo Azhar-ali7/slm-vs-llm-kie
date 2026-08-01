@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-08-01T01:46:18.957113+00:00",
+  "pilot": false,
+  "seed": 42,
+  "python": "3.12.4",
+  "platform": "macOS-15.5-arm64-arm-64bit",
+  "models": [
+    {
+      "id": "mistral-7b-ft",
+      "kind": "local"
+    }
+  ],
+  "n_docs": 20,
+  "shot_modes": [
+    "zero_shot",
+    "few_shot"
+  ],
+  "input_variants": [
+    "lines_only",
+    "lines_plus_kv"
+  ],
+  "n_samples": 1,
+  "api_provider": "azure_openai",
+  "datasets": [
+    "kleister_charity",
+    "sroie"
+  ]
+}
