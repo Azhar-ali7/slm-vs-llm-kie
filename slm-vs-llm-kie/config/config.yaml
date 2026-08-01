@@ -10,7 +10,7 @@ paths:
   results: results
   runs_jsonl: results/runs.jsonl
   summary_csv: results/summary.csv
-  test_set: results/test_set_20.json
+  test_set: results/test_set_50.json
   report_md: results/REPORT.md
   plots_dir: results
   report_dir: report
@@ -30,12 +30,15 @@ datasets:
     raw_dir: data/raw/kleister_charity
     complexity: complex       # 8 fields, financial reports
 
-# 20-doc reproducible test set: how many from each dataset (fixed by seed).
+# Reproducible test set (seed-fixed). 50 = seed-42 superset of the frozen 20
+# (results/test_set_50.json contains all of test_set_20.json). Tier A (small-vs-large,
+# all 15 models) uses the common 20; Tier B (large-arm-only: size-sensitivity + null-gold
+# hallucination) uses the full 50. See FINDINGS [E9].
 test_set:
-  total: 20
+  total: 50
   per_dataset:
-    sroie: 10
-    kleister_charity: 10
+    sroie: 25
+    kleister_charity: 25
 
 # ----------------------------------------------------------------------------
 # Conditions (experiment grid)

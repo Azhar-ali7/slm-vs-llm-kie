@@ -45,59 +45,92 @@ These do not change between runs — they define the bench.
 | gemma3-4b | 4.0B | local (Ollama) | ✅ run |
 | phi4-mini | 3.8B | local (Ollama, M1) | ✅ run |
 | mistral-7b | 7.0B | local (Ollama, M1) | ✅ run |
-| gemma4-31b (**gemma-4-31B-it**) | 31B | DO serverless | ✅ run |
-| large-open-llm (**llama3.3-70b-instruct**) | 70B | DO serverless | ✅ run |
-| frontier-llm (**openai-gpt-oss-120b**) | 120B | DO serverless | ✅ run |
+| phi4-mini-ft | 3.8B | local (Ollama, M1) — **QLoRA fine-tune** | ✅ run ([E6]) |
+| mistral-7b-ft | 7.0B | local (Ollama, M1) — **QLoRA fine-tune** | ✅ run ([E8]) |
+| gemma3-27b (**google.gemma-3-27b-it**) | 27B | AWS Bedrock | ✅ run |
+| llama-70b (**llama3.3-70b-instruct**) | 70B | AWS Bedrock | ✅ run |
+| qwen3-235b (**qwen3-235b**) | 235B | AWS Bedrock | ✅ run |
+| llama4-maverick (**llama4-maverick**) | 400B | AWS Bedrock | ✅ run |
+| deepseek-v3 (**deepseek.v3.2**) | 671B | AWS Bedrock | ✅ run |
 
-> **Large-arm model choice (revised):** GPT-4o and Claude Haiku 4.5 require DO subscription
-> **Tier 3+**; this account is Tier 1/2, so the large arm uses DO-hosted **open** models
-> instead (gemma-4-31B, llama3.3-70b, gpt-oss-120b). This is also a *methodological gain* —
-> fully open/reproducible large models, no closed-weights dependency. See [E5].
+> **Large arm migrated to AWS Bedrock (was DigitalOcean).** The Phase-2 large arm ran on
+> DO serverless (gemma-4-31B, llama3.3-70b, gpt-oss-120b); Phase 3 moved it to **Bedrock**
+> for a wider, per-token serverless roster. Two DO models were dropped on the way:
+> **Gemma-4-31B** (thinking can't be disabled → 79/80 emitted reasoning, no JSON) and
+> **GPT-OSS-120B** (reasoning consumed the token budget → truncated JSON), replaced by
+> **DeepSeek-V3.2** (671B). Final large arm = 5 Bedrock models spanning **27B–671B**, all
+> open-weight (no closed-model dependency). See [E5] (historical DO run) and [E9] (current
+> Bedrock arm + two-tier test set).
 
 ---
 
-## 2. Current standings — 11 models (8 local on M1 + 3 large on DO serverless)
+## 2. Current standings — 15 models (10 local on M1 + 5 large on AWS Bedrock)
 
-Source: `results/runs.jsonl` → `results/summary.csv` / `results/REPORT.md`. All 80 cells
-(20 docs × 4 conditions) per model; **0 parse failures except large-open-llm (1/80)**.
-Ranked by F1. Peak mem is local-only (RSS on M1); the large arm runs remotely (`n/a`).
-`$tot` is the whole-grid DigitalOcean cost on the $200 credit (local = free).
+Source: `results/runs.jsonl` via `scripts/analyze_tiers.py` (Tier A). **Common 20-doc set,
+all 15 models**, 80 cells each (20 docs × 4 conditions); 0 parse failures. Ranked by F1
+(mean per-cell). P/R are pooled (micro). `$tot` = whole-grid Bedrock cost (local = free).
+> **Two-tier bench (see [E9]):** the large arm was additionally re-run on a **50-doc**
+> superset (Tier B, cloud-only) to answer the size-sensitivity and hallucination questions
+> that 20 docs can't; those results are in §2b below. This table is Tier A — the unified
+> small-vs-large comparison on the docs **all** models share.
 
-| Model | arm | params | F1 | P / R | Exact-match | Med. latency | Peak mem | $tot | zero / few-shot |
-|---|---|---|---|---|---|---|---|---|---|
-| **gemma4-31b** | large | 31B | **0.701** | .75 / .67 | **15/80** | **1.8 s** | n/a | 0.043 | 0.683 / 0.718 |
-| large-open-llm (llama3.3) | large | 70B | 0.667 | .72 / .63 | 10/80 | 11.6 s | n/a | 0.083 | 0.601 / **0.733** |
-| frontier-llm (gpt-oss) | large | 120B | 0.655 | .71 / .62 | 3/80 | 13.4 s | n/a | 0.050 | 0.646 / 0.665 |
-| mistral-7b | local | 7.0B | 0.642 | .68 / .62 | 8/80 | 18.7 s | 5.0 GB | free | 0.578 / 0.705 |
-| gemma3-4b | local | 4.0B | 0.639 | .66 / .63 | 7/80 | 8.9 s | 2.6 GB | free | 0.647 / 0.632 |
-| gemma2-2b | local | 2.0B | 0.611 | .64 / .59 | 9/80 | 8.1 s | 2.8 GB | free | 0.573 / 0.650 |
-| phi4-mini | local | 3.8B | 0.528 | .58 / .51 | 10/80 | 7.1 s | 3.6 GB | free | 0.587 / 0.469 |
-| gemma3-1b | local | 1.0B | 0.417 | .42 / .41 | 1/80 | 3.4 s | 2.2 GB | free | 0.428 / 0.406 |
-| qwen2.5-0.5b | local | 0.5B | 0.381 | .41 / .37 | 0/80 | 3.1 s | 1.5 GB | free | 0.337 / 0.425 |
-| smollm2-360m | local | 0.36B | 0.306 | .31 / .31 | 0/80 | 3.1 s | 1.5 GB | free | 0.350 / 0.263 |
-| llama3.2-1b | local | 1.0B | 0.277 | .30 / .27 | 0/80 | 5.1 s | 2.2 GB | free | **0.529 / 0.025** |
+| Model | arm | params | F1 | P / R | Exact-match | Med. latency | $tot |
+|---|---|---|---|---|---|---|---|
+| qwen3-235b | large | 235B | **0.714** | .73 / .65 | 18/80 | 2.3 s | 0.036 |
+| gemma3-27b | large | 27B | 0.713 | .76 / .64 | 16/80 | 2.4 s | 0.029 |
+| deepseek-v3 | large | 671B | 0.700 | .76 / .61 | 18/80 | 1.8 s | 0.082 |
+| llama4-maverick | large | 400B | 0.698 | .74 / .63 | 14/80 | **0.9 s** | 0.036 |
+| llama-70b | large | 70B | 0.690 | .75 / .63 | 11/80 | 1.2 s | 0.093 |
+| **phi4-mini-ft** | local·ft | 3.8B | **0.669** | .61 / .61 | **25/80** | 14.5 s† | free |
+| **mistral-7b-ft** | local·ft | 7.0B | 0.661 | .59 / .59 | **26/80** | 36.9 s† | free |
+| mistral-7b | local | 7.0B | 0.642 | .65 / .57 | 8/80 | 18.7 s | free |
+| gemma3-4b | local | 4.0B | 0.639 | .62 / .59 | 7/80 | 8.9 s | free |
+| gemma2-2b | local | 2.0B | 0.611 | .62 / .54 | 9/80 | 8.1 s | free |
+| phi4-mini | local | 3.8B | 0.528 | .61 / .44 | 10/80 | 7.1 s | free |
+| gemma3-1b | local | 1.0B | 0.417 | .38 / .36 | 1/80 | 3.4 s | free |
+| qwen2.5-0.5b | local | 0.5B | 0.381 | .39 / .34 | 0/80 | 3.1 s | free |
+| smollm2-360m | local | 0.36B | 0.306 | .26 / .26 | 0/80 | 3.1 s | free |
+| llama3.2-1b | local | 1.0B | 0.277 | .27 / .25 | 0/80 | 5.1 s | free |
+
+† ft latencies are a **measurement artifact** (swap thrashing on a near-full 8 GB M1 during
+the re-eval), not a property of the models — same arch/quant as their base ⇒ inference cost
+is ~equal. See [E6].
 
 **Headlines:**
-1. **Quality is INVERSELY related to size across the large arm: 31B (0.701) > 70B (0.667)
-   > 120B (0.655).** The smallest large model wins outright. Combined with the local arm
-   (4B gemma3 ≈ 7B mistral; 2B gemma2 > 3.8B phi4-mini), the whole study delivers one
-   verdict: **parameter count is a poor predictor of KIE quality — architecture & training
-   dominate.** This is the dissertation's central result.
-2. **gemma4-31b dominates the entire study** — best F1 (0.701), best exact-match (15/80,
-   ~5× the 120B's 3/80), *fastest* model of all 11 (1.8 s median; DO serves it very fast),
-   and cheapest of the large arm ($0.043).
-3. **The SLM↔LLM gap is small.** The best local model (mistral-7b, 0.642) is within
-   **0.06 F1** of the best cloud model and **beats the 120B gpt-oss on exact-match**
-   (8/80 vs 3/80). A **4B** model on the M1 (gemma3-4b, 0.639) effectively ties a **120B**
-   cloud model (0.655) — for free, locally, on 8 GB. The strongest small-vs-large argument.
-4. **The Gemma family leads at every size** (1B/2B/4B/31B = 0.417/0.611/0.639/0.701) — a
-   clean single-architecture scaling curve from edge to cloud; Gemma 3 also beats the prior
-   gen at 1B (0.417 vs llama3.2-1b 0.277).
-5. **Few-shot is model-dependent, not universally good.** It *helps* mistral (+0.13),
-   llama3.3-70b (+0.13) and gemma2 (+0.08) but *destroys* llama3.2-1b (0.529→0.025, context
-   overflow) and hurts phi4-mini (−0.12). Tiny models prefer zero-shot. (→ Phase-3 [P5].)
-6. **Recall < precision for every model, large arm included** — the bottleneck is *missed*
-   fields, not hallucinations, even at 120B (→ Phase-3 [P4] regex fallback).
+1. **Within the large arm, quality is SIZE-INSENSITIVE — bigger is not better.** The five
+   Bedrock models span 27B→671B yet cluster in **0.690–0.714** (spread 0.024). On the larger
+   Tier-B 50-doc set the effect is statistically clean: all five 95% CIs overlap, top−bottom
+   is 0.026 (paired CI [−0.002, 0.056]), and **F1 does not correlate with size**
+   (r(log-params, F1) = −0.21). The 27B is numerically top but *within noise* — this is
+   "size-insensitive," **not** "inverse scaling." (Corrects the earlier claim; see [E9].)
+2. **THE central result — a task-tuned 3.8B local model rivals a 235B cloud model, for
+   free.** `phi4-mini-ft` (0.669) lands within **0.045 F1** of the best cloud model
+   (qwen3-235b 0.714) on an 8 GB laptop at $0 — and the two fine-tuned locals **win
+   exact-match outright** (25–26/80 vs the cloud arm's ≤ 18/80). Small + task-tuning closes
+   the gap; on the strictest metric (exact document match) it *reverses* it.
+3. **Fine-tuning is the lever that moves a small model** ([E6]/[E8]). phi4-mini jumps
+   0.528 → 0.669 (worst mid-tier → bottom edge of the large arm); mistral 0.642 → 0.661
+   (mixed, see [E8]). Un-tuned, the best local (mistral-7b 0.642) still trails the whole
+   large arm; *tuned*, it enters it.
+4. **The Gemma family scales cleanly across the whole ladder** — 1B/2B/4B/27B =
+   0.417/0.611/0.639/0.713 — a single-architecture curve from edge to cloud, and Gemma-3
+   beats the prior gen at 1B (0.417 vs llama3.2-1b 0.277).
+5. **Few-shot is model-dependent, not universally good.** It *helps* the large arm and
+   strong mid models (mistral-7b +0.128, llama-70b +0.126, qwen3-235b +0.065, gemma2-2b
+   +0.077) but **destroys tiny models** (llama3.2-1b 0.529→0.025 context overflow;
+   phi4-mini −0.118) and slightly *hurts the fine-tuned models* (mistral-ft −0.059,
+   phi4-ft −0.037) — after zero-shot-style SFT, in-context examples are a distribution
+   mismatch. Tiny and tuned models prefer zero-shot. (→ Phase-3 [P5].)
+
+### 2b. Large-arm deep-dive — Tier B (50 docs, 5 Bedrock models; see [E9])
+6. **Hallucination is a real, measured failure mode — once the test set can show it.** The
+   frozen 20-doc set has **zero null-gold fields**, so hallucination was structurally 0 and
+   "recall < precision → the bottleneck is missed fields" was an *artifact of the bench*, not
+   a finding. On the 50-doc set (which contains genuinely-null optional Kleister fields) the
+   large models **over-extract a spurious value into 36 of 100 null-gold field-instances
+   (36%)** — evenly across models (6–8 each). So the true picture is **two** failure modes:
+   missed fields (recall) *and* over-extraction on absent fields (~36%), the latter invisible
+   until [E9]. (Local models were not re-scored on the 30 extra docs — a stated limitation.)
 
 ---
 
@@ -105,7 +138,8 @@ Ranked by F1. Peak mem is local-only (RSS on M1); the large arm runs remotely (`
 
 | Artifact | What it is |
 |---|---|
-| `results/runs.jsonl` | Current run, one row per cell (880 rows = 11 models × 80) — local **structured-output** + large arm prompt-JSON |
+| `results/runs.jsonl` | Current run, one row per cell (1800 rows = 15 models × 20 docs + 5 Bedrock × 30 extra Tier-B docs) — local **structured-output** + large arm prompt-JSON |
+| `scripts/analyze_tiers.py` | Tier-A/Tier-B analysis ([E9]): unified standings + size-sensitivity CI + hallucination |
 | `results/runs_baseline.jsonl` | Frozen baseline (320 rows) — **no structured output**, for the A/B |
 | `results/summary.csv` | Per-model + per-condition aggregates |
 | `results/REPORT.md` | Auto-generated tables + auto-findings (regenerated each run) |
@@ -115,7 +149,9 @@ Ranked by F1. Peak mem is local-only (RSS on M1); the large arm runs remotely (`
 | `results/plot_field_heatmap.png` | Per-field F1 heatmap (which fields are hard) |
 | `results/manifest.json` | Run provenance (seed, platform, models, datasets) |
 | `results/snapshots/2026-06-15-phase2-baseline/` | **Versioned** frozen copy of the 8-local-model run (the pre-large-arm baseline) |
-| `results/snapshots/2026-06-15-phase2-with-large/` | **Versioned** frozen copy of the full 11-model run incl. large arm (runs.jsonl, summary.csv, REPORT.md, plots) — the live `results/` files are gitignored as regenerable |
+| `results/snapshots/2026-06-15-phase2-with-large/` | **Versioned** frozen copy of the full 11-model DO run incl. large arm — the historical Phase-2 (pre-Bedrock, pre-fine-tune) record |
+| `results/snapshots/2026-08-01-phase3-finetunes/` | **Versioned** Phase-3 record — 15 models × 20 docs (1200 rows) incl. both QLoRA fine-tunes ([E6]/[E8]) |
+| `results/snapshots/2026-08-01-phase3b-testset50/` | **Versioned** Phase-3b record — two-tier 50-doc bench (1800 rows) behind [E9] (size-sensitivity + hallucination) |
 | `scripts/run_large_arm.sh` | One-command large-arm run (gpt-oss-120b + llama3.3-70b on DO serverless); needs `DO_INFERENCE_KEY` |
 
 ---
@@ -338,9 +374,14 @@ Each entry: **what changed**, **why (hypothesis)**, **result (before→after)**,
   | SROIE F1 | 0.769 | **0.875** | **+0.106** |
   | Kleister F1 | 0.514 | 0.447 | **−0.067** |
 
-  - **Significance:** per-doc cluster bootstrap (10k resamples) ΔF1 = **+0.019, 95% CI
+  - **Significance:** per-doc cluster bootstrap (10k resamples) ΔF1_macro = **+0.019, 95% CI
     [−0.049, +0.088], p(Δ≤0)=0.287** — the overall gain **is not statistically significant**
     (CI spans zero); **9/20 docs improved, 9 regressed, 2 tie.**
+  - **Metric-dependent sign (report both):** the +0.019 is *mean-over-docs* (macro). On the
+    **pooled micro F1** the same aggregation gives **0.607 → 0.590 (−0.017)** — a slight
+    *regression*. The two aggregations disagree in sign, so the only unambiguous mistral gain
+    is **exact-match (8→26)** and **SROIE**; the overall effect is best reported as "flat /
+    within noise," not a win. (phi4-mini [E6] wins on both: micro 0.510 → 0.610.)
 - **The finding (why this is worth keeping):** the aggregate near-null hides a real,
   interpretable **trade-off** — fine-tuning **specialised the model to SROIE** (F1 +0.106,
   exact-match *tripled* 8→26) at the **expense of Kleister** (−0.067). Two compounding causes:
@@ -378,6 +419,44 @@ Each entry: **what changed**, **why (hypothesis)**, **result (before→after)**,
   fidelity* even where F1 was flat. A negative-ish result that strengthens, rather than
   weakens, the thesis's central claim that **fine-tuning value depends on baseline quality
   and balanced, untruncated task data**.
+
+### [E9] 2026-08-01 — Test-set expansion + two-tier bench (fixes two unsupported headlines)
+- **What / why:** a hostile-examiner code review found two of §2's headlines were **not
+  supported by the current data**: (a) "quality is *inversely* related to size / the smallest
+  large model wins outright," and (b) "recall < precision → the bottleneck is missed fields,
+  not hallucinations." Both are **large-arm-internal** questions that the frozen 20-doc set is
+  too small (and too clean) to answer. Fix: a **cloud-only** test-set expansion.
+- **Design — two tiers (no wasted work, no invalidated baseline):**
+  - **Tier A** = the frozen **20** docs (`test_set_20.json`), **all 15 models** — the unified
+    small-vs-large standings (§2). Unchanged.
+  - **Tier B** = a **50-doc** set (`test_set_50.json`), the **5 Bedrock models only**.
+    The 50 is a **seed-42 superset** of the 20 (verified: contains all 20), so Tier A stays a
+    valid subset and nothing is re-run needlessly. Re-ran only the 5 cloud models on the +30
+    new docs: **600 cells, $0.42, 0 errors, 0 duplicate cell-keys.** Local models were **not**
+    re-scored on the 30 new docs (stated limitation — the two large-arm questions don't need
+    them). Analysis: `scripts/analyze_tiers.py`.
+- **Result (a) — size-sensitivity ([E9] replaces the false "inverse scaling"):** on 50 docs,
+  27B 0.697 · 70B 0.671 · 235B 0.680 · 400B 0.681 · 671B 0.688. **All five 95% CIs overlap**;
+  top−bottom spread 0.026, paired ΔF1 95% CI **[−0.002, 0.056]**; **Pearson r(log-params, F1)
+  = −0.21**. Conclusion: **quality is size-insensitive across the large arm** — the 27B is
+  numerically top but within noise. "Bigger is not better" survives; "inverse / smallest wins
+  outright" does **not**.
+- **Result (b) — hallucination is real once measurable:** the 20-doc set has **0 null-gold
+  fields**, so `hallucinated` was structurally 0 and the old "no hallucinations" headline was
+  a **test-set artifact**. The 30 new docs include genuinely-null optional Kleister fields
+  (100 null-gold field-instances across the cloud rows); the large models **over-extract a
+  spurious value into 36 of them (36%)**, evenly spread (gemma3-27b/qwen3-235b/llama-70b 8
+  each, maverick/deepseek 6). So KIE failure is **two-sided** — missed fields *and* ~36%
+  over-extraction on absent fields — the latter previously invisible.
+- **Methodological point:** the seed-42-superset trick means a test-set expansion need not
+  discard the frozen baseline — the smaller set remains an exact subset, so old results stay
+  valid and only the delta is computed. Cheap ($0.42) and non-destructive.
+- **Honest scope caveats:** only **3** of the 30 new docs carry null-gold fields (5 fields ×
+  4 conditions × 5 models = 100 instances), so the 36% over-extraction rate is a *demonstration
+  that the metric captures the failure mode*, not a large-N estimate; and local models are on
+  20 docs, cloud on 50, so cross-arm F1 comparisons use Tier A (the common 20).
+- **Artifact:** `results/snapshots/2026-08-01-phase3b-testset50/` (1800 rows, `tier_analysis.txt`,
+  both test-set files, README); `scripts/analyze_tiers.py`; `config.yaml` `test_set` → 50.
 
 ---
 

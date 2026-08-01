@@ -1,0 +1,44 @@
+{
+  "timestamp": "2026-08-01T11:13:21.134894+00:00",
+  "pilot": false,
+  "seed": 42,
+  "python": "3.12.4",
+  "platform": "macOS-15.5-arm64-arm-64bit",
+  "models": [
+    {
+      "id": "gemma3-27b",
+      "kind": "api"
+    },
+    {
+      "id": "deepseek-v3",
+      "kind": "api"
+    },
+    {
+      "id": "qwen3-235b",
+      "kind": "api"
+    },
+    {
+      "id": "llama-70b",
+      "kind": "api"
+    },
+    {
+      "id": "llama4-maverick",
+      "kind": "api"
+    }
+  ],
+  "n_docs": 50,
+  "shot_modes": [
+    "zero_shot",
+    "few_shot"
+  ],
+  "input_variants": [
+    "lines_only",
+    "lines_plus_kv"
+  ],
+  "n_samples": 1,
+  "api_provider": "azure_openai",
+  "datasets": [
+    "kleister_charity",
+    "sroie"
+  ]
+}

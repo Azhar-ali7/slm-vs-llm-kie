@@ -1,0 +1,30 @@
+=== TIER A — unified standings, common 20-doc set, all models ===
+model            type       F1   exact
+qwen3-235b       api     0.714   0.225
+gemma3-27b       api     0.713   0.200
+deepseek-v3      api     0.700   0.225
+llama4-maverick  api     0.698   0.175
+llama-70b        api     0.690   0.138
+phi4-mini-ft     local   0.669   0.312
+mistral-7b-ft    local   0.661   0.325
+mistral-7b       local   0.642   0.100
+gemma3-4b        local   0.639   0.087
+gemma2-2b        local   0.611   0.113
+phi4-mini        local   0.528   0.125
+gemma3-1b        local   0.417   0.013
+qwen2.5-0.5b     local   0.381   0.000
+smollm2-360m     local   0.306   0.000
+llama3.2-1b      local   0.277   0.000
+
+=== TIER B — large arm on 50 docs ===
+[2] size-sensitivity  (50 docs)
+    gemma3-27b         27B  F1=0.697  95% CI [0.633, 0.760]
+    llama-70b          70B  F1=0.671  95% CI [0.618, 0.721]
+    qwen3-235b        235B  F1=0.680  95% CI [0.619, 0.741]
+    llama4-maverick   400B  F1=0.681  95% CI [0.623, 0.739]
+    deepseek-v3       671B  F1=0.688  95% CI [0.629, 0.747]
+    top(gemma3-27b 0.697) - bottom(llama-70b 0.671) = 0.026; paired ΔF1 95% CI [-0.002, 0.056]
+    Pearson r(log-params, F1) = -0.206  (~0 ⇒ size-insensitive)
+[3] hallucination on null-gold fields (over-extraction)
+    null-gold field-instances (cloud rows): 100; hallucinated: 36 (36% over-extraction)
+    by model: {'gemma3-27b': 8, 'qwen3-235b': 8, 'llama-70b': 8, 'llama4-maverick': 6, 'deepseek-v3': 6}

@@ -1,0 +1,212 @@
+{
+  "seed": 42,
+  "synthetic": false,
+  "datasets_used": [
+    "kleister_charity",
+    "sroie"
+  ],
+  "count": 50,
+  "doc_ids": [
+    {
+      "dataset": "sroie",
+      "doc_id": "132"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "480"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "074"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "077"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "506"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "062"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "585"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "282"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "500"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "251"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "118"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "128"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "247"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "198"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "092"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "496"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "331"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "538"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "215"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "096"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "483"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "621"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "183"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "193"
+    },
+    {
+      "dataset": "sroie",
+      "doc_id": "360"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "fbbee4cae6e45840ccf67770f20e2d37.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "cdd7cafa5fe035d23b5c2d7a657b964e.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "8de1f1d7aa1cb2e202278eea3e2c28cc.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "d47bcb11ee78e487ab8cd04e5a998471.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "8899f24e69d7a8112b259edf3efa023c.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "fd14b3c4883a44006fc277bdf148f900.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "ec1258cb892c6df6805f7ce535eabdeb.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "4fd537391af33385f88cb9bd4acd9a47.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "599fb7491bf8eeb42b8122eb4e5e29d0.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "5d244f3d316aa9373168f3dad77e76df.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "8ac85d3320a804e527db3be9849045c5.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "556ee39a83d9a15738918e8e60dc45a7.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "5fa97ceb44a3e938380f9c8ac8bf66b0.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "587a5eac356ddaed8a43234fae40e424.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "e0a9478052e3445f5745a12bf7794b9c.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "a067076aca4f58243a2edffb728dec4c.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "fa9c25864d252fc025405782ae3dc764.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "788b3fdd6da4cc6e733f6a2971085457.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "de46fe8726cfbeda8d40ee2877f2ad80.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "7841b41a28c388caa3ae0260cf0a37eb.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "4a97ea2ed923fa66b87b7b705d82fc3b.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "e3ec9d3cb7be0d8605e68fcf44419cb5.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "c7006b5063335150f4c757539eb07a50.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "0c88611d64745bdf05eb2ba8d372e27b.pdf"
+    },
+    {
+      "dataset": "kleister_charity",
+      "doc_id": "6ce095a5c4b7e2a3921a070321ddd082.pdf"
+    }
+  ],
+  "superset_of": "test_set_20.json"
+}

@@ -30,15 +30,19 @@ supersedes `2026-06-15-phase2-with-large/` (which froze the pre-fine-tune standi
 
 **Fine-tune headlines (before → after, same frozen grid):**
 
-- **phi4-mini → phi4-mini-ft** — the clean win ([E6]). macro-F1 0.572 → 0.681. A
-  task-tuned 3.8B model that started as the weakest local baseline jumps to beat several
+Numbers below are F1_macro = mean per-cell F1 over the 80 cells (matches FINDINGS
+[E6]/[E8]; do **not** use `summary.csv`'s `f1_macro_mean`, which averages the four
+per-condition rows and gives slightly different figures).
+
+- **phi4-mini → phi4-mini-ft** — the clean win ([E6]). F1_macro **0.528 → 0.669** (+0.141).
+  A task-tuned 3.8B model that started as the weakest local baseline jumps to beat several
   much larger models — the [P2] dissertation claim.
-- **mistral-7b → mistral-7b-ft** — mixed/instructive ([E8]). macro-F1 0.581 → 0.694
-  overall, but this hides a trade-off: **SROIE +0.106** (exact-match 8→26, tripled)
-  while **Kleister −0.067**. The already-strong baseline had little headroom, and 4096-token
-  training truncation dropped ~73% of the long Kleister docs, so the model specialised to
-  SROIE at Kleister's expense. Honest secondary result: fine-tuning pays off dramatically
-  for a *weak* baseline but marginally (and non-uniformly) for a *strong* one.
+- **mistral-7b → mistral-7b-ft** — mixed/instructive ([E8]). F1_macro **0.642 → 0.661**
+  (+0.019, not significant), and this hides a trade-off: **SROIE +0.106** (exact-match
+  8→26, tripled) while **Kleister −0.067**. The already-strong baseline had little headroom,
+  and 4096-token training truncation dropped most long Kleister docs, so the model
+  specialised to SROIE at Kleister's expense. (Under pooled *micro* F1 this is a slight
+  regression, 0.607→0.590 — see [E8].)
 
 **Reproduce:** local arm `python3 scripts/run_eval.py`; fine-tunes
 `python3 scripts/run_eval.py --models phi4-mini-ft mistral-7b-ft` (after
